@@ -1,0 +1,245 @@
+{% load humanize %}
+<style>
+  #uni_modal .modal-footer {
+    display: none;
+  }
+
+  .thermal-shell {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .thermal-wrapper {
+    font-family: 'Arial', 'Helvetica', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    width: 64mm;
+    max-width: 100%;
+    padding: 0 2mm 4mm;
+    margin: 0 auto;
+    color: #000;
+    background: #fff;
+    box-sizing: border-box;
+    -webkit-font-smoothing: none;
+    text-rendering: optimizeSpeed;
+  }
+
+  .thermal-divider {
+    border: none;
+    border-top: 1px dashed #000;
+    margin: 6px 0;
+  }
+
+  .thermal-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  .thermal-items .item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+  }
+
+  .thermal-items .item-name {
+    flex: 1;
+    padding: 0 4px;
+  }
+
+  .thermal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  @page {
+    size: 64mm auto;
+    margin: 0;
+  }
+
+  @media print {
+    html,
+    body {
+      margin: 0;
+      width: 64mm;
+      background: #fff;
+      color: #000;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .thermal-wrapper {
+      box-shadow: none !important;
+    }
+
+    .thermal-actions {
+      display: none !important;
+    }
+  }
+</style>
+
+<div class="thermal-shell">
+  <div class="thermal-wrapper" id="pedido-receipt">
+      <div style="text-align: center; margin-bottom: 6px;">
+        <h6 style="margin: 0; text-transform: uppercase; letter-spacing: 1px;">{{ title }}</h6>
+        <small>{% if is_sale_record %}Pedido Finalizado{% else %}Pedido (Delivery){% endif %}</small>
+      </div>
+
+      <hr class="thermal-divider" />
+
+      <div>
+        <div class="thermal-row">
+          <span>Data:</span>
+          <span>{{ record.date_added|date:"d/m/Y H:i" }}</span>
+        </div>
+        <div class="thermal-row">
+          <span>Código:</span>
+          <span>{{ record.code }}</span>
+        </div>
+        {% if record.customer_name %}
+        <div class="thermal-row">
+          <span>Cliente:</span>
+          <span>{{ record.customer_name }}</span>
+        </div>
+        {% endif %}
+        {% with address=customer_address|default:record.endereco_entrega %}
+        {% if address %}
+        <div class="thermal-row" style="flex-direction: column; align-items: flex-start;">
+          <span>Endereço:</span>
+          <span>{{ address }}</span>
+        </div>
+        {% endif %}
+        {% endwith %}
+        <div class="thermal-row">
+          <span>Pagamento:</span>
+          <span>{{ record.forma_pagamento|default:"N/I" }}</span>
+        </div>
+        {% if record.status %}
+        <div class="thermal-row">
+          <span>Status:</span>
+          <span>{{ record.status|title }}</span>
+        </div>
+        {% endif %}
+      </div>
+
+      <hr class="thermal-divider" />
+
+      <div class="thermal-row" style="font-weight: bold;">
+        <span style="width: 12%;">Qtd</span>
+        <span style="flex: 1; text-align: left;">Produto</span>
+        <span style="width: 30%; text-align: right;">Valor</span>
+      </div>
+
+      <div class="thermal-items">
+        {% for item in items %}
+        <div class="item">
+          <span style="width: 12%;">{{ item.quantity|floatformat:2 }}</span>
+          <span class="item-name">{{ item.name }}</span>
+          <span style="width: 30%; text-align: right;">R$ {{ item.total|floatformat:2 }}</span>
+        </div>
+        {% empty %}
+        <div class="item" style="justify-content: center;">
+          Nenhum item registrado.
+        </div>
+        {% endfor %}
+      </div>
+
+      <hr class="thermal-divider" />
+
+      <div class="thermal-row">
+        <span>Subtotal</span>
+        <span>R$ {{ record.sub_total|floatformat:2 }}</span>
+      </div>
+      <div class="thermal-row">
+        <span>Impostos ({{ record.tax|floatformat:2 }}%)</span>
+        <span>R$ {{ record.tax_amount|floatformat:2 }}</span>
+      </div>
+      {% if record.discount_total %}
+      <div class="thermal-row">
+        <span>Desconto</span>
+        <span>- R$ {{ record.discount_total|floatformat:2 }}</span>
+      </div>
+      {% if record.discount_reason %}
+      <div class="thermal-row" style="font-size: 11px;">
+        <span>Motivo</span>
+        <span>{{ record.discount_reason }}</span>
+      </div>
+      {% endif %}
+      {% endif %}
+      {% if delivery_fee %}
+      <div class="thermal-row">
+        <span>Taxa de Entrega</span>
+        <span>R$ {{ delivery_fee|floatformat:2 }}</span>
+      </div>
+      {% endif %}
+      <div class="thermal-row" style="font-weight: bold;">
+        <span>Total</span>
+        <span>R$ {{ record.grand_total|floatformat:2 }}</span>
+      </div>
+      <div class="thermal-row">
+        <span>Pago</span>
+        <span>R$ {{ record.tendered_amount|floatformat:2 }}</span>
+      </div>
+      <div class="thermal-row">
+        <span>Troco</span>
+        <span>R$ {{ record.amount_change|floatformat:2 }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="thermal-actions">
+    <button id="pedido-receipt-print" class="btn btn-light border rounded-0 btn-sm">
+      <i class="mdi mdi-printer"></i> Imprimir
+    </button>
+    <button type="button" class="btn btn-secondary border rounded-0 btn-sm" data-bs-dismiss="modal">
+      <i class="mdi mdi-close"></i> Fechar
+    </button>
+  </div>
+</div>
+
+<script>
+  document.getElementById('pedido-receipt-print').addEventListener('click', function () {
+    const content = document.getElementById('pedido-receipt').innerHTML;
+    const printWindow = window.open('', '_blank', 'width=320,height=600,menubar=no,toolbar=no');
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+        <head>
+          <meta charset="UTF-8" />
+          <title>{{ title }}</title>
+          <style>
+            @page { size: 64mm auto; margin: 0; }
+            html, body {
+              margin: 0;
+              width: 64mm;
+              font-family: 'Arial', 'Helvetica', sans-serif;
+              font-size: 13px;
+              font-weight: 600;
+              line-height: 1.4;
+              background: #fff;
+              color: #000;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .thermal-actions { display: none; }
+            .thermal-divider { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+          </style>
+        </head>
+        <body>
+          ${content}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.onload = function () {
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    };
+  });
+</script>

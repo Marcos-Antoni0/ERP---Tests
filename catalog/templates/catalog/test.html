@@ -1,0 +1,38 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste</title>
+    <link rel="stylesheet" href="{% static 'p_v_App/assets/bootstrap/css/bootstrap.min.css' %}">
+
+    <!-- <link rel="stylesheet" href="{% static 'p_v_App/assets/select2/dist/css/select2.min.css' %}"> -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+    <link rel="stylesheet" href="{% static 'p_v_App/assets/default/css/style.css' %}">
+    <!-- Fim dos estilos de layout -->
+    <script src="{% static 'p_v_App/assets/default/js/jquery-3.6.0.min.js' %}">
+    </script>
+    <!-- <script src="{% static 'p_v_App/assets/select2/dist/js/select2.full.js' %}"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+</head>
+
+<body>
+    <div class="form-group mb-3">
+        <label for="category_id" class="control-label">Categoria</label>
+        <select name="category_id" id="category_id" class="form-select form-select-sm rounded-0" required>
+        <option value="" disabled selected></option>
+        {% for category in categories %}
+            <option value="{{ category.id }}">{{ category.name }}</option>
+        {% endfor %}
+    </select>
+</body>
+<script>
+    $(function() {
+        $('#category_id').select2()
+    })
+</script>
+
+</html>

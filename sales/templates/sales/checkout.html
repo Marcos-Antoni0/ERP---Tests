@@ -1,0 +1,293 @@
+{% load humanize %}
+<div class="container-fluid">
+    <form action="" id="checkout-form">
+        <div class="form-group mb-3">
+            <label for="payable_amount" class="control-label">Valor a pagar</label>
+            <input type="text" id="payable_amount" class="form-control form-control-lg rounded-0 text-end" value="{{ grand_total|intcomma }}" disabled>
+        </div>
+        <div id="multiPaymentGroup" class="mb-3" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="control-label mb-0">Pagamentos registrados</label>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="addPayment">
+                    <i class="mdi mdi-plus"></i> Adicionar pagamento
+                </button>
+            </div>
+            <div id="paymentsContainer" class="payment-stack"></div>
+            <small class="text-muted">Inclua uma linha para cada forma de pagamento recebida.</small>
+        </div>
+        <div id="singlePaymentGroup" class="form-group mb-3">
+            <label for="forma_pagamento" class="control-label">Forma de pagamento</label>
+            <select id="forma_pagamento" name="forma_pagamento" class="form-control form-control-lg rounded-0">
+                <option value="PIX">Pix</option>
+                <option value="DINHEIRO">Dinheiro</option>
+                <option value="DEBITO">Débito</option>
+                <option value="CREDITO">Crédito</option>
+            </select>
+        </div>
+        <div id="singleTenderedGroup" class="form-group mb-3">
+            <label for="tendered_amount" class="control-label">Valor pago</label>
+            <input type="number" step="0.01" id="tendered_amount" class="form-control form-control-lg rounded-0 text-end" value="0">
+        </div>
+        <div id="remainingGroup" class="form-group mb-3" style="display:none;">
+            <label for="remaining_amount" class="control-label">Saldo a receber</label>
+            <input type="text" id="remaining_amount" class="form-control form-control-lg rounded-0 text-end" value="0,00" disabled>
+        </div>
+        <div class="form-group mb-3">
+            <label for="payment_change" class="control-label">Troco</label>
+            <input type="text" id="payment_change" class="form-control form-control-lg rounded-0 text-end" value="{{ 0|intcomma }}" disabled>
+        </div>
+        <div class="form-group mb-3">
+            <label for="sale-type" class="control-label">Tipo de operação</label>
+            <select id="sale-type" name="type" class="form-control form-control-lg rounded-0">
+                <option value="venda" selected>Venda</option>
+                <option value="pedido">Pedido (Delivery)</option>
+            </select>
+        </div>
+        <div class="form-group mb-3">
+            <label for="customer_name" class="control-label">Nome do cliente (opcional)</label>
+            <input type="text" id="customer_name" name="customer_name" class="form-control form-control-lg rounded-0" placeholder="Insira o nome do cliente">
+        </div>
+        <div id="delivery-address-group" class="form-group mb-3" style="display:none;">
+            <label for="endereco_entrega" class="control-label">Endereço (Entrega)</label>
+            <input type="text" id="endereco_entrega" name="endereco_entrega" class="form-control form-control-lg rounded-0" placeholder="Insira o endereço">
+        </div>
+        <div id="delivery-fee-group" class="form-group mb-3" style="display:none;">
+            <label for="taxa_entrega" class="control-label">Taxa de entrega</label>
+            <input type="number" step="0.01" id="taxa_entrega" name="taxa_entrega" class="form-control form-control-lg rounded-0" placeholder="Insira a taxa de entrega">
+        </div>
+    </form>
+</div>
+<div id="paymentRowTemplate" class="d-none">
+    <div class="payment-row row g-2 align-items-end mb-2">
+        <div class="col-6">
+            <select class="form-select payment-method">
+                <option value="PIX">Pix</option>
+                <option value="DINHEIRO">Dinheiro</option>
+                <option value="DEBITO">Débito</option>
+                <option value="CREDITO">Crédito</option>
+            </select>
+        </div>
+        <div class="col-4">
+            <input type="number" min="0.01" step="0.01" class="form-control payment-amount text-end" placeholder="0,00">
+        </div>
+        <div class="col-2 text-end">
+            <button type="button" class="btn btn-outline-danger btn-sm remove-payment">
+                <i class="mdi mdi-close"></i>
+            </button>
+        </div>
+    </div>
+</div>
+<script>
+    $(function() {
+        const originalPayable = parseFloat("{{ grand_total }}") || 0;
+        const posForm = $('#pos-form');
+        const paymentsContainer = $('#paymentsContainer');
+
+        function normalizeNumber(value) {
+            if (value === undefined || value === null) {
+                return 0;
+            }
+            const raw = String(value).trim();
+            if (!raw) {
+                return 0;
+            }
+            const usesComma = raw.includes(',');
+            const sanitized = usesComma ? raw.replace(/\./g, '').replace(',', '.') : raw.replace(/\s/g, '');
+            const parsed = parseFloat(sanitized);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+
+        function formatCurrency(value) {
+            const number = Number(value) || 0;
+            const absValue = Math.abs(number);
+            const formatted = absValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return number < 0 ? `-${formatted}` : formatted;
+        }
+
+        function updatePayable() {
+            let due = originalPayable;
+            if ($('#sale-type').val() === 'pedido') {
+                const delivery = normalizeNumber($('#taxa_entrega').val());
+                if (delivery > 0) {
+                    due += delivery;
+                }
+            }
+            $('#payable_amount').val(formatCurrency(due));
+            return due;
+        }
+
+        function ensurePaymentRows() {
+            if (paymentsContainer.children('.payment-row').length === 0) {
+                addPaymentRow('DINHEIRO', updatePayable());
+            }
+        }
+
+        function recalcMulti() {
+            ensurePaymentRows();
+            const due = updatePayable();
+            let tendered = 0;
+            paymentsContainer.find('.payment-row').each(function() {
+                const amount = normalizeNumber($(this).find('.payment-amount').val());
+                tendered += amount;
+            });
+            const remaining = Math.max(due - tendered, 0);
+            const change = Math.max(tendered - due, 0);
+            $('#remaining_amount').val(formatCurrency(remaining)).data('raw', remaining);
+            $('#payment_change').val(formatCurrency(change));
+            posForm.find('[name="tendered_amount"]').val(tendered.toFixed(2));
+            posForm.find('[name="amount_change"]').val(change.toFixed(2));
+        }
+
+        function recalcSingle() {
+            const due = updatePayable();
+            const tendered = normalizeNumber($('#tendered_amount').val());
+            const change = tendered - due;
+            $('#payment_change').val(formatCurrency(change));
+            posForm.find('[name="tendered_amount"]').val(tendered.toFixed(2));
+            posForm.find('[name="amount_change"]').val(change.toFixed(2));
+        }
+
+        function addPaymentRow(method, amount) {
+            const template = $('#paymentRowTemplate .payment-row').first().clone();
+            template.find('.payment-method').val(method || 'PIX');
+            if (amount !== undefined) {
+                template.find('.payment-amount').val((Number(amount) || 0).toFixed(2));
+            }
+            template.find('.payment-method').on('change', recalcMulti);
+            template.find('.payment-amount').on('input', recalcMulti);
+            template.find('.remove-payment').on('click', function() {
+                if (paymentsContainer.children('.payment-row').length === 1) {
+                    template.find('.payment-amount').val('0.00');
+                    recalcMulti();
+                    return;
+                }
+                template.remove();
+                recalcMulti();
+            });
+            paymentsContainer.append(template);
+        }
+
+        $('#addPayment').on('click', function() {
+            const remaining = parseFloat($('#remaining_amount').data('raw')) || 0;
+            const targetAmount = remaining > 0 ? remaining : updatePayable();
+            addPaymentRow('DINHEIRO', targetAmount);
+            recalcMulti();
+        });
+
+        $('#sale-type').on('change', function() {
+            const isPedido = $(this).val() === 'pedido';
+            $('#delivery-address-group, #delivery-fee-group').toggle(isPedido);
+            $('#endereco_entrega, #taxa_entrega').prop('required', isPedido);
+            $('#singlePaymentGroup, #singleTenderedGroup').toggle(isPedido);
+            $('#multiPaymentGroup, #remainingGroup').toggle(!isPedido);
+            if (isPedido) {
+                recalcSingle();
+            } else {
+                paymentsContainer.empty();
+                addPaymentRow('DINHEIRO', updatePayable());
+                recalcMulti();
+            }
+        }).trigger('change');
+
+        $('#taxa_entrega').on('input', function() {
+            if ($('#sale-type').val() === 'pedido') {
+                recalcSingle();
+            } else {
+                recalcMulti();
+            }
+        });
+
+        $('#tendered_amount').on('input', recalcSingle);
+
+        $('#checkout-form').on('submit', function(e) {
+            e.preventDefault();
+            const saleType = $('#sale-type').val();
+            const discountValue = parseFloat(posForm.find('[name="discount_total"]').val()) || 0;
+            if (discountValue > 0) {
+                const reason = (posForm.find('[name="discount_reason"]').val() || '').trim();
+                if (!reason) {
+                    alert('Informe o motivo do desconto antes de finalizar.');
+                    return false;
+                }
+            }
+
+            posForm.find('input[name="forma_pagamento"]').remove();
+            posForm.find('input[name="endereco_entrega"]').remove();
+            posForm.find('input[name="type"]').remove();
+            posForm.find('input[name="customer_name"]').remove();
+            posForm.find('input[name="taxa_entrega"]').remove();
+            posForm.find('input[name="payment_method[]"]').remove();
+            posForm.find('input[name="payment_amount[]"]').remove();
+
+            if (saleType === 'pedido') {
+                const tendered = normalizeNumber($('#tendered_amount').val());
+                const due = updatePayable();
+                if (tendered < due) {
+                    alert('O valor pago é menor que o valor a pagar');
+                    return false;
+                }
+                posForm.find('[name="grand_total"]').val(due.toFixed(2));
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'forma_pagamento',
+                    value: $('#forma_pagamento').val()
+                }).appendTo(posForm);
+            } else {
+                recalcMulti();
+                const remaining = parseFloat($('#remaining_amount').data('raw')) || 0;
+                if (remaining > 0.009) {
+                    alert('Ainda existe valor pendente para receber.');
+                    return false;
+                }
+                const due = updatePayable();
+                posForm.find('[name="grand_total"]').val(due.toFixed(2));
+                paymentsContainer.find('.payment-row').each(function() {
+                    const method = $(this).find('.payment-method').val();
+                    const amount = normalizeNumber($(this).find('.payment-amount').val());
+                    if (!method || amount <= 0) {
+                        return;
+                    }
+                    $('<input>').attr({ type: 'hidden', name: 'payment_method[]', value: method }).appendTo(posForm);
+                    $('<input>').attr({ type: 'hidden', name: 'payment_amount[]', value: amount.toFixed(2) }).appendTo(posForm);
+                });
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'forma_pagamento',
+                    value: 'MULTI'
+                }).appendTo(posForm);
+            }
+
+            if ($('#customer_name').val()) {
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'customer_name',
+                    value: $('#customer_name').val()
+                }).appendTo(posForm);
+            }
+
+            $('<input>').attr({
+                type: 'hidden',
+                name: 'type',
+                value: saleType
+            }).appendTo(posForm);
+
+            if ($('#endereco_entrega').is(':visible') && $('#endereco_entrega').val()) {
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'endereco_entrega',
+                    value: $('#endereco_entrega').val()
+                }).appendTo(posForm);
+            }
+
+            if ($('#taxa_entrega').is(':visible') && $('#taxa_entrega').val()) {
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'taxa_entrega',
+                    value: $('#taxa_entrega').val()
+                }).appendTo(posForm);
+            }
+
+            posForm.submit();
+        });
+    });
+</script>

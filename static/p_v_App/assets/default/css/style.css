@@ -1,0 +1,71 @@
+html,
+body {
+    height: 100%;
+    width: 100%;
+}
+
+.loader-wrapper {
+    background: #e9eaefa6 !important;
+}
+
+.mid-large {
+    width: 54vw !important;
+    max-width: unset;
+}
+
+.body-wrapper .main-wrapper .page-wrapper .content-wrapper {
+    min-height: calc(100vh - 84px - 62px) !important;
+}
+
+#POS-field {
+    height: 55vh
+}
+
+.mdc-card.info-card.info-card--primary .card-inner .card-icon-wrapper {
+    background: var(--bs-primary) !important;
+    box-shadow: 0 0 10px 5px rgb(13 110 253 / 28%);
+}
+
+.bg-primary {
+    background: var(--bs-primary) !important;
+}
+
+.text-primary {
+    color: var(--bs-primary) !important
+}
+
+.mdc-drawer {
+    background: unset;
+}
+
+.mdc-drawer__header,
+.mdc-drawer__content {
+    margin: .5em !important;
+}
+
+.mdc-list-item.mdc-drawer-item {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+.mdc-drawer .mdc-drawer__content .mdc-drawer-menu .mdc-drawer-link {
+    gap: .5rem;
+}
+
+.mdc-drawer .mdc-drawer__content .mdc-drawer-menu .mdc-drawer-label {
+    flex: 1 1 auto;
+    display: inline-flex;
+    align-items: center;
+    color: inherit;
+}
+
+.mdc-drawer .mdc-drawer__content .mdc-drawer-menu .mdc-drawer-item.mdc-list-item--activated .mdc-drawer-link {
+    background-color: rgba(122, 0, 255, 0.25);
+    border-radius: .75rem;
+    color: #fff !important;
+    font-weight: 600;
+}
+
+.mdc-drawer .mdc-drawer__content .mdc-drawer-menu .mdc-drawer-item.mdc-list-item--activated .mdc-drawer-link i {
+    color: inherit;
+}

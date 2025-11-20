@@ -1,0 +1,23 @@
+View para pedidos
+- Ajuste seleção de Vendas e Relatórios duplicado
+
+Relatórios
+- Incluir valores de taxa de entrega
+
+Pedidos
+- Adicionar taxa de entrega em nota
+- Adicionar mais informações em pedidos
+- Adicionar carregamento em tela quando finalizar pedido
+- Adicionar estabelecimento em nota
+- Adicionar produto na nota
+
+Testes
+- Criar pedido sem taxa de entrega - permitir criar
+
+Estoque
+- Ajuste preço e custos da tabela
+- Visão geral valores estoque
+- Não permitir vender negativo
+
+Vendas Recibo
+- Permitir filtrar por data

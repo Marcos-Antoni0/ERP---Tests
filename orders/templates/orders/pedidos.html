@@ -1,0 +1,251 @@
+{% extends 'core/base.html' %}
+
+{% block pageContent %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+  <h1 class="h2 mb-4 text-center fw-bold">{{ page_title }}</h1>
+</div>
+
+<!-- Sistema de grid do Material Design -->
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-4 mdc-layout-grid__cell--span-12-tablet">
+  <!-- PENDENTES -->
+  <div class="card border-0 shadow h-100">
+    <div class="card-header bg-primary text-white py-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold">Pendentes</h5>
+        <span class="badge bg-light text-primary rounded-pill">{{ pedidos_pendentes|length }}</span>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="orders-list">
+        {% for p in pedidos_pendentes %}
+          <div class="pedido-item p-3 border-bottom position-relative">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="badge bg-primary text-white fs-6">#{{ p.id }}</span>
+              <span class="fw-bold fs-6">R$ {{ p.grand_total|floatformat:2 }}</span>
+            </div>
+            <div class="mb-3">
+              <div class="fw-bold fs-6">{{ p.endereco_entrega }}</div>
+            </div>
+            <form method="post" action="{% url 'atualizar_status_pedido' p.id %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-primary btn-md w-100">
+                <i class="bi bi-truck me-2"></i>Iniciar rota
+              </button>
+              <button type="button" class="btn btn-info btn-sm view-pedido" data-id="{{ p.id }}"
+                style="position:absolute; top:10px; right:45px;" title="Ver detalhes">
+                <i class="bi bi-eye"></i>
+              </button>
+              <button type="button" class="btn btn-danger btn-sm delete-pedido" data-id="{{ p.id }}"
+                style="position:absolute; top:10px; right:5px;" title="Excluir pedido">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </div>
+        {% empty %}
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-inbox h1 d-block mb-3"></i>
+            <p class="fs-5">Nenhum pedido pendente</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-4 mdc-layout-grid__cell--span-12-tablet">
+  <!-- EM ROTA -->
+  <div class="card border-0 shadow h-100">
+    <div class="card-header bg-warning text-white py-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold">Em rota</h5>
+        <span class="badge bg-light text-warning rounded-pill">{{ pedidos_em_rota|length }}</span>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="orders-list">
+        {% for p in pedidos_em_rota %}
+          <div class="pedido-item p-3 border-bottom position-relative">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="badge bg-warning text-white fs-6">#{{ p.id }}</span>
+              <span class="fw-bold fs-6">R$ {{ p.grand_total|floatformat:2 }}</span>
+            </div>
+            <div class="mb-3">
+              <div class="fw-bold fs-6">{{ p.endereco_entrega }}</div>
+            </div>
+            <form method="post" action="{% url 'atualizar_status_pedido' p.id %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-warning btn-md w-100">
+                <i class="bi bi-check-circle me-2"></i>Marcar entregue
+              </button>
+              <button type="button" class="btn btn-info btn-sm view-pedido" data-id="{{ p.id }}"
+                style="position:absolute; top:10px; right:45px;" title="Ver detalhes">
+                <i class="bi bi-eye"></i>
+              </button>
+              <button type="button" class="btn btn-danger btn-sm delete-pedido" data-id="{{ p.id }}"
+                style="position:absolute; top:10px; right:5px;" title="Excluir pedido">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </div>
+        {% empty %}
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-truck h1 d-block mb-3"></i>
+            <p class="fs-5">Nenhum pedido em rota</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-4 mdc-layout-grid__cell--span-12-tablet">
+  <!-- ENTREGUES -->
+  <div class="card border-0 shadow h-100">
+    <div class="card-header bg-success text-white py-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold">Entregues</h5>
+        <span class="badge bg-light text-success rounded-pill">{{ pedidos_entregues|length }}</span>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="orders-list">
+        {% for p in pedidos_entregues %}
+          <div class="pedido-item p-3 border-bottom position-relative">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="badge bg-success text-white fs-6">#{{ p.id }}</span>
+              <span class="fw-bold fs-6">R$ {{ p.grand_total|floatformat:2 }}</span>
+            </div>
+            <div class="mb-3">
+              <div class="fw-bold fs-6">{{ p.endereco_entrega }}</div>
+            </div>
+            <form method="post" action="{% url 'finalizar_pedido' p.id %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-success btn-md w-100">
+                <i class="bi bi-archive me-2"></i>Finalizar pedido
+              </button>
+              <button type="button" class="btn btn-info btn-sm view-pedido" data-id="{{ p.id }}"
+                style="position:absolute; top:10px; right:45px;" title="Ver detalhes">
+                <i class="bi bi-eye"></i>
+              </button>
+              <button type="button" class="btn btn-danger btn-sm delete-pedido" data-id="{{ p.id }}"
+                style="position:absolute; top:10px; right:5px;" title="Excluir pedido">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </div>
+        {% empty %}
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-check2-all h1 d-block mb-3"></i>
+            <p class="fs-5">Nenhum pedido entregue</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Lista de pedidos com scroll */
+  .orders-list {
+    height: 500px;
+    overflow-y: auto;
+    width: 100%;
+  }
+  
+  /* Estilos para os cards */
+  .card {
+    width: 100%;
+    border-radius: 0.5rem !important;
+  }
+  
+  .card-header {
+    border-radius: 0.5rem 0.5rem 0 0 !important;
+  }
+  
+  /* Efeito hover nos itens */
+  .pedido-item {
+    transition: background-color 0.2s;
+  }
+  
+  .pedido-item:hover {
+    background-color: rgba(0,0,0,0.03);
+  }
+  
+  /* Estilos para os botões */
+  .btn {
+    border-radius: 50px;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    padding: 0.5rem 1rem;
+  }
+  
+  /* Estilos para os badges */
+  .badge.rounded-pill {
+    padding: 0.35em 0.8em;
+    font-size: 0.9rem;
+  }
+  
+  /* Fix para scroll em dispositivos móveis */
+  @media (max-width: 576px) {
+    .orders-list {
+      height: 350px;
+    }
+  }
+</style>
+
+<!-- Adicionar Bootstrap Icons -->
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+<!-- Script para os botões de ação -->
+<script>
+  // Ao clicar em "Ver detalhes", abre modal com detalhes do pedido
+$('.view-pedido').click(function(){
+  const pedidoId = $(this).data('id');
+  uni_modal("Detalhes do Pedido", "{% url 'view-pedido' %}?id=" + pedidoId);
+});
+
+// Confirmação para excluir pedido
+$('.delete-pedido').click(function(){
+    const pedidoId = $(this).data('id');
+    _conf("Tem certeza que deseja excluir este pedido?", "delete_pedido", [pedidoId]);
+});
+
+// Função JS para excluir pedido via AJAX
+function delete_pedido($id) {
+    start_loader();
+    $.ajax({
+        headers: {"X-CSRFToken": '{{ csrf_token }}'},
+        url: "{% url 'delete_pedido' %}",
+        method: "POST",
+        data: {id: $id},
+        dataType: "json",
+        success: function(resp) {
+            end_loader();
+            // Fechar o modal de confirmação primeiro
+            $('.modal').modal('hide');
+            
+            if (resp.status === 'success') {
+                // Mostrar toast e garantir redirecionamento
+                alert_toast("Pedido deletado com sucesso.", 'success');
+                
+                // Forçar reload da página de forma mais direta e garantida
+                setTimeout(function() {
+                    window.location.href = window.location.href; // Abordagem mais confiável para recarregar
+                }, 1500);
+            } else {
+                alert_toast("Erro ao deletar pedido: " + resp.msg, 'error');
+            }
+        },
+        error: function(xhr, status, error) {
+            end_loader();
+            $('.modal').modal('hide');
+            alert_toast("Falha na conexão: " + error, 'error');
+            console.error("Erro na requisição AJAX:", error);
+        }
+    });
+}
+</script>
+{% endblock pageContent %}

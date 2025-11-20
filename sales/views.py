@@ -969,6 +969,15 @@ def sales_report(request):
         date_added__date__lte=end,
     )
 
+    cash_exits_agg = (
+        CashMovement.objects.filter(
+            company=user_company,
+            type=CashMovement.Type.EXIT,
+            recorded_at__date__gte=start,
+            recorded_at__date__lte=end,
+        ).aggregate(total=Sum("amount"))
+    )
+
     sales_aggregates = sales_qs.aggregate(
         total_revenue=Sum("grand_total"),
         total_tax=Sum("tax_amount"),
@@ -982,6 +991,7 @@ def sales_report(request):
         "total_discount": float(sales_aggregates.get("total_discount") or 0),
         "total_delivery_fee": float(sales_aggregates.get("total_delivery") or 0),
         "total_tax": float(sales_aggregates.get("total_tax") or 0),
+        "total_cash_exits": float(cash_exits_agg.get("total") or 0),
     }
     totals["total_average_ticket"] = (
         totals["total_revenue"] / totals["total_tx"] if totals["total_tx"] else 0

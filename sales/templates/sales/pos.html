@@ -288,6 +288,75 @@
 
         return true;
     }
+
+    // Wrapper para suportar tamb��m c��digos EAN (prefixo diferente de 2)
+    function processBarcodeEnhanced(barcode) {
+        // C��digos de balan��a (prefixo 2) usam a fun��ǜo original
+        if (barcode && barcode.trim().startsWith('2')) {
+            return processBarcode(barcode);
+        }
+
+        // Demais c��digos: trata como EAN e adiciona 1 unidade
+        if (!barcode) {
+            return false;
+        }
+
+        barcode = barcode.trim();
+
+        if (barcode.length !== 13) {
+            alert("C��digo de barras deve ter exatamente 13 d��gitos!");
+            return false;
+        }
+
+        var eanCode = barcode;
+        var eanProduct = null;
+        var eanProductId = null;
+
+        Object.keys(prod_arr).forEach(function(id) {
+            var product = prod_arr[id];
+
+            if (eanProduct) {
+                return;
+            }
+
+            if (
+                product.code == eanCode ||
+                product.codigo_barras == eanCode ||
+                product.barcode == eanCode ||
+                product.product_code == eanCode ||
+                String(product.id) === eanCode ||
+                String(id) === eanCode
+            ) {
+                eanProduct = product;
+                eanProductId = id;
+            }
+        });
+
+        if (!eanProduct) {
+            alert("Produto nǜo encontrado com o c��digo: " + eanCode);
+            return false;
+        }
+
+        var qty = 1;
+
+        if (eanProduct.is_combo) {
+            openComboModal(eanProductId, qty, eanProduct);
+            return true;
+        }
+
+        var selector = '#POS-field table tbody input[name="product_id[]"][value="' + eanProductId + '"]';
+        if ($(selector).length > 0) {
+            var existingRow = $(selector).closest('tr');
+            var currentQty = parseFloat(existingRow.find('[name="qty[]"]').val());
+            var newQty = currentQty + qty;
+            existingRow.find('[name="qty[]"]').val(newQty.toFixed(3));
+            calc();
+        } else {
+            addProductToList(eanProductId, qty, eanProduct);
+        }
+
+        return true;
+    }
     
     // Função para adicionar produto à lista
     function addProductToList(productId, quantity, productData, comboConfig = null, comboSummary = '') {
@@ -468,7 +537,7 @@
                 e.preventDefault();
                 var barcode = $(this).val();
                 if (barcode) {
-                    if (processBarcode(barcode)) {
+                    if (processBarcodeEnhanced(barcode)) {
                         $(this).val(''); // Limpa o campo após processar
                     }
                 }
@@ -482,7 +551,7 @@
                 alert("Digite um código de barras!");
                 return;
             }
-            if (processBarcode(barcode)) {
+            if (processBarcodeEnhanced(barcode)) {
                 $('#barcode-input').val(''); // Limpa o campo após processar
             }
         });

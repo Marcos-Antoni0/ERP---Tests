@@ -53,6 +53,10 @@
       <h5>Taxas de Entrega (R$)</h5>
       <h2>{{ totals.total_delivery_fee|floatformat:2|intcomma }}</h2>
     </div>
+    <div class="card flex-fill text-white bg-danger p-3">
+      <h5>Saídas de Caixa (R$)</h5>
+      <h2>{{ totals.total_cash_exits|floatformat:2|intcomma }}</h2>
+    </div>
   </div>
 </div>
 

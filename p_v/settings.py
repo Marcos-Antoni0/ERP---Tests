@@ -84,7 +84,7 @@ WSGI_APPLICATION = 'p_v.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default='postgresql://postgres:uWftPvjbkOyRPvVSyLBTtnFiUqoSHrBX@shinkansen.proxy.rlwy.net:38612/railway',
+        default='postgresql://postgres:IcmskSFcjSccnTXfeWockdteMBzPRZpO@shortline.proxy.rlwy.net:35872/railway',
         conn_max_age=600,
         ssl_require=not DEBUG
     )

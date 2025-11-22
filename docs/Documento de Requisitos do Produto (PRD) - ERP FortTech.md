@@ -1,4 +1,4 @@
-# Documento de Requisitos do Produto (PRD) - ERP Tests
+# Documento de Requisitos do Produto (PRD) - ERP FortTech
 
 ## 1. Visão Geral
 

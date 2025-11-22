@@ -718,6 +718,16 @@
                         } else {
                             successMsg = 'Venda finalizada com sucesso!';
                         }
+                        if (resp.receipt_url) {
+                            const popup = window.open(resp.receipt_url, '_blank', 'width=420,height=680,menubar=no,toolbar=no');
+                            if (!popup) {
+                                // Fallback: iframe oculto para acionar auto_print
+                                const iframe = document.createElement('iframe');
+                                iframe.style.display = 'none';
+                                iframe.src = resp.receipt_url;
+                                document.body.appendChild(iframe);
+                            }
+                        }
                         
                         el.text(successMsg)
                         _this.prepend(el)

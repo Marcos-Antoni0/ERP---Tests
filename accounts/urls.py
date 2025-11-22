@@ -5,12 +5,12 @@ from accounts import views
 
 urlpatterns = [
     path(
-        "login/",
+        'login/',
         auth_views.LoginView.as_view(
-            template_name="accounts/login.html", redirect_authenticated_user=True
+            template_name='accounts/login.html', redirect_authenticated_user=True
         ),
-        name="login",
+        name='login',
     ),
-    path("userlogin", views.login_user, name="login-user"),
-    path("logout", views.logout_user, name="logout"),
+    path('userlogin', views.login_user, name='login-user'),
+    path('logout', views.logout_user, name='logout'),
 ]

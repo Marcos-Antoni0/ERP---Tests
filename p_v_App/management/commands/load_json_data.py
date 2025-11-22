@@ -17,6 +17,7 @@ from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 from p_v_App.models import Category, Products, Sales, salesItems, Pedido, PedidoItem, Estoque
 
+
 class Command(BaseCommand):
     help = 'Carrega dados de um arquivo JSON no banco de dados'
 
@@ -48,7 +49,8 @@ class Command(BaseCommand):
 
         if dry_run:
             self.stdout.write(
-                self.style.WARNING('MODO DRY-RUN: Nenhum dado será salvo no banco')
+                self.style.WARNING(
+                    'MODO DRY-RUN: Nenhum dado será salvo no banco')
             )
 
         if clear_data:
@@ -59,7 +61,7 @@ class Command(BaseCommand):
     def clear_all_data(self, dry_run=False):
         """Limpa todos os dados das tabelas."""
         self.stdout.write('Limpando dados existentes...')
-        
+
         if not dry_run:
             # Ordem importante devido às chaves estrangeiras
             salesItems.objects.all().delete()
@@ -70,7 +72,7 @@ class Command(BaseCommand):
             Products.objects.all().delete()
             Category.objects.all().delete()
             # Não deletar usuários por segurança
-            
+
         self.stdout.write(
             self.style.SUCCESS('Dados limpos com sucesso!')
         )
@@ -84,7 +86,8 @@ class Command(BaseCommand):
             with open(file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
         except UnicodeDecodeError:
-            self.stdout.write('Erro de codificação UTF-8. Tentando com latin-1...')
+            self.stdout.write(
+                'Erro de codificação UTF-8. Tentando com latin-1...')
             with open(file_path, 'r', encoding='latin-1') as f:
                 data = json.load(f)
 
@@ -113,35 +116,35 @@ class Command(BaseCommand):
                 if model_name == 'auth.user':
                     self.load_user(pk, fields, dry_run)
                     stats['auth.user'] += 1
-                    
+
                 elif model_name == 'p_v_App.category':
                     self.load_category(pk, fields, dry_run)
                     stats['p_v_App.category'] += 1
-                    
+
                 elif model_name == 'p_v_App.products':
                     self.load_product(pk, fields, dry_run)
                     stats['p_v_App.products'] += 1
-                    
+
                 elif model_name == 'p_v_App.sales':
                     self.load_sale(pk, fields, dry_run)
                     stats['p_v_App.sales'] += 1
-                    
+
                 elif model_name == 'p_v_App.salesitems':
                     self.load_sales_item(pk, fields, dry_run)
                     stats['p_v_App.salesitems'] += 1
-                    
+
                 elif model_name == 'p_v_App.pedido':
                     self.load_pedido(pk, fields, dry_run)
                     stats['p_v_App.pedido'] += 1
-                    
+
                 elif model_name == 'p_v_App.pedidoitem':
                     self.load_pedido_item(pk, fields, dry_run)
                     stats['p_v_App.pedidoitem'] += 1
-                    
+
                 elif model_name == 'p_v_App.estoque':
                     self.load_estoque(pk, fields, dry_run)
                     stats['p_v_App.estoque'] += 1
-                    
+
                 else:
                     self.stdout.write(f'Modelo não reconhecido: {model_name}')
                     stats['skipped'] += 1
@@ -157,7 +160,8 @@ class Command(BaseCommand):
 
             # Mostrar progresso
             if (i + 1) % 100 == 0:
-                self.stdout.write(f'Processados {i + 1}/{len(data)} objetos...')
+                self.stdout.write(
+                    f'Processados {i + 1}/{len(data)} objetos...')
 
         # Estatísticas finais
         self.stdout.write('\n=== ESTATÍSTICAS FINAIS ===')
@@ -173,7 +177,7 @@ class Command(BaseCommand):
         """Converte string de data para objeto datetime."""
         if not date_string:
             return timezone.now()
-        
+
         try:
             return parse_datetime(date_string)
         except:
@@ -182,7 +186,8 @@ class Command(BaseCommand):
     def load_user(self, pk, fields, dry_run=False):
         """Carrega usuário."""
         if dry_run:
-            self.stdout.write(f'[DRY-RUN] Criaria usuário: {fields.get("username", "")}')
+            self.stdout.write(
+                f'[DRY-RUN] Criaria usuário: {fields.get("username", "")}')
             return
 
         user, created = User.objects.get_or_create(
@@ -204,7 +209,8 @@ class Command(BaseCommand):
     def load_category(self, pk, fields, dry_run=False):
         """Carrega categoria."""
         if dry_run:
-            self.stdout.write(f'[DRY-RUN] Criaria categoria: {fields.get("name", "")}')
+            self.stdout.write(
+                f'[DRY-RUN] Criaria categoria: {fields.get("name", "")}')
             return
 
         category, created = Category.objects.get_or_create(
@@ -221,14 +227,16 @@ class Command(BaseCommand):
     def load_product(self, pk, fields, dry_run=False):
         """Carrega produto."""
         if dry_run:
-            self.stdout.write(f'[DRY-RUN] Criaria produto: {fields.get("name", "")}')
+            self.stdout.write(
+                f'[DRY-RUN] Criaria produto: {fields.get("name", "")}')
             return
 
         category_id = fields.get('category_id')
         try:
             category = Category.objects.get(pk=category_id)
         except Category.DoesNotExist:
-            raise CommandError(f'Categoria {category_id} não encontrada para produto {pk}')
+            raise CommandError(
+                f'Categoria {category_id} não encontrada para produto {pk}')
 
         product, created = Products.objects.get_or_create(
             pk=pk,
@@ -248,7 +256,8 @@ class Command(BaseCommand):
     def load_sale(self, pk, fields, dry_run=False):
         """Carrega venda."""
         if dry_run:
-            self.stdout.write(f'[DRY-RUN] Criaria venda: {fields.get("code", "")}')
+            self.stdout.write(
+                f'[DRY-RUN] Criaria venda: {fields.get("code", "")}')
             return
 
         sale, created = Sales.objects.get_or_create(
@@ -281,13 +290,15 @@ class Command(BaseCommand):
         try:
             sale = Sales.objects.get(pk=sale_id)
         except Sales.DoesNotExist:
-            raise CommandError(f'Venda {sale_id} não encontrada para item {pk}')
+            raise CommandError(
+                f'Venda {sale_id} não encontrada para item {pk}')
 
         product_id = fields.get('product_id')
         try:
             product = Products.objects.get(pk=product_id)
         except Products.DoesNotExist:
-            raise CommandError(f'Produto {product_id} não encontrado para item {pk}')
+            raise CommandError(
+                f'Produto {product_id} não encontrado para item {pk}')
 
         sales_item, created = salesItems.objects.get_or_create(
             pk=pk,
@@ -303,7 +314,8 @@ class Command(BaseCommand):
     def load_pedido(self, pk, fields, dry_run=False):
         """Carrega pedido."""
         if dry_run:
-            self.stdout.write(f'[DRY-RUN] Criaria pedido: {fields.get("code", "")}')
+            self.stdout.write(
+                f'[DRY-RUN] Criaria pedido: {fields.get("code", "")}')
             return
 
         pedido, created = Pedido.objects.get_or_create(
@@ -336,13 +348,15 @@ class Command(BaseCommand):
         try:
             pedido = Pedido.objects.get(pk=pedido_id)
         except Pedido.DoesNotExist:
-            raise CommandError(f'Pedido {pedido_id} não encontrado para item {pk}')
+            raise CommandError(
+                f'Pedido {pedido_id} não encontrado para item {pk}')
 
         product_id = fields.get('product')
         try:
             product = Products.objects.get(pk=product_id)
         except Products.DoesNotExist:
-            raise CommandError(f'Produto {product_id} não encontrado para item {pk}')
+            raise CommandError(
+                f'Produto {product_id} não encontrado para item {pk}')
 
         pedido_item, created = PedidoItem.objects.get_or_create(
             pk=pk,
@@ -366,13 +380,15 @@ class Command(BaseCommand):
         try:
             produto = Products.objects.get(pk=produto_id)
         except Products.DoesNotExist:
-            raise CommandError(f'Produto {produto_id} não encontrado para estoque {pk}')
+            raise CommandError(
+                f'Produto {produto_id} não encontrado para estoque {pk}')
 
         categoria_id = fields.get('categoria')
         try:
             categoria = Category.objects.get(pk=categoria_id)
         except Category.DoesNotExist:
-            raise CommandError(f'Categoria {categoria_id} não encontrada para estoque {pk}')
+            raise CommandError(
+                f'Categoria {categoria_id} não encontrada para estoque {pk}')
 
         descricao = None
         descricao_id = fields.get('descricao')
@@ -396,4 +412,3 @@ class Command(BaseCommand):
                 'status': fields.get('status', 1),
             }
         )
-

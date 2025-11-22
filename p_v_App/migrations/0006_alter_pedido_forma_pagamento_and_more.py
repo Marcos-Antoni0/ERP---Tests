@@ -11,315 +11,322 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("p_v_App", "0005_sales_delivery_fee"),
+        ('p_v_App', '0005_sales_delivery_fee'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name="pedido",
-            name="forma_pagamento",
+            model_name='pedido',
+            name='forma_pagamento',
             field=models.CharField(
                 choices=[
-                    ("PIX", "Pix"),
-                    ("DINHEIRO", "Dinheiro"),
-                    ("DEBITO", "Débito"),
-                    ("CREDITO", "Crédito"),
-                    ("MULTI", "Pagamentos múltiplos"),
+                    ('PIX', 'Pix'),
+                    ('DINHEIRO', 'Dinheiro'),
+                    ('DEBITO', 'Débito'),
+                    ('CREDITO', 'Crédito'),
+                    ('MULTI', 'Pagamentos múltiplos'),
                 ],
-                default="PIX",
+                default='PIX',
                 max_length=10,
-                verbose_name="Forma de Pagamento",
+                verbose_name='Forma de Pagamento',
             ),
         ),
         migrations.AlterField(
-            model_name="sales",
-            name="forma_pagamento",
+            model_name='sales',
+            name='forma_pagamento',
             field=models.CharField(
                 choices=[
-                    ("PIX", "Pix"),
-                    ("DINHEIRO", "Dinheiro"),
-                    ("DEBITO", "Débito"),
-                    ("CREDITO", "Crédito"),
-                    ("MULTI", "Pagamentos múltiplos"),
+                    ('PIX', 'Pix'),
+                    ('DINHEIRO', 'Dinheiro'),
+                    ('DEBITO', 'Débito'),
+                    ('CREDITO', 'Crédito'),
+                    ('MULTI', 'Pagamentos múltiplos'),
                 ],
-                default="PIX",
+                default='PIX',
                 max_length=10,
-                verbose_name="Forma de Pagamento",
+                verbose_name='Forma de Pagamento',
             ),
         ),
         migrations.AlterField(
-            model_name="tableorder",
-            name="payment_method",
+            model_name='tableorder',
+            name='payment_method',
             field=models.CharField(
                 blank=True,
                 choices=[
-                    ("PIX", "Pix"),
-                    ("DINHEIRO", "Dinheiro"),
-                    ("DEBITO", "Débito"),
-                    ("CREDITO", "Crédito"),
-                    ("MULTI", "Pagamentos múltiplos"),
+                    ('PIX', 'Pix'),
+                    ('DINHEIRO', 'Dinheiro'),
+                    ('DEBITO', 'Débito'),
+                    ('CREDITO', 'Crédito'),
+                    ('MULTI', 'Pagamentos múltiplos'),
                 ],
                 max_length=10,
             ),
         ),
         migrations.CreateModel(
-            name="CashRegisterSession",
+            name='CashRegisterSession',
             fields=[
                 (
-                    "id",
+                    'id',
                     models.BigAutoField(
                         auto_created=True,
                         primary_key=True,
                         serialize=False,
-                        verbose_name="ID",
+                        verbose_name='ID',
                     ),
                 ),
                 (
-                    "opening_amount",
+                    'opening_amount',
                     models.DecimalField(
                         decimal_places=2,
                         max_digits=10,
                         validators=[
-                            django.core.validators.MinValueValidator(Decimal("0.00"))
+                            django.core.validators.MinValueValidator(
+                                Decimal('0.00'))
                         ],
                     ),
                 ),
                 (
-                    "closing_amount",
+                    'closing_amount',
                     models.DecimalField(
                         decimal_places=2,
-                        default=Decimal("0.00"),
+                        default=Decimal('0.00'),
                         max_digits=10,
                         validators=[
-                            django.core.validators.MinValueValidator(Decimal("0.00"))
+                            django.core.validators.MinValueValidator(
+                                Decimal('0.00'))
                         ],
                     ),
                 ),
-                ("opening_note", models.TextField(blank=True)),
-                ("closing_note", models.TextField(blank=True)),
+                ('opening_note', models.TextField(blank=True)),
+                ('closing_note', models.TextField(blank=True)),
                 (
-                    "status",
+                    'status',
                     models.CharField(
-                        choices=[("open", "Aberto"), ("closed", "Fechado")],
-                        default="open",
+                        choices=[('open', 'Aberto'), ('closed', 'Fechado')],
+                        default='open',
                         max_length=10,
                     ),
                 ),
-                ("opened_at", models.DateTimeField(default=django.utils.timezone.now)),
-                ("closed_at", models.DateTimeField(blank=True, null=True)),
+                ('opened_at', models.DateTimeField(
+                    default=django.utils.timezone.now)),
+                ('closed_at', models.DateTimeField(blank=True, null=True)),
                 (
-                    "closed_by",
+                    'closed_by',
                     models.ForeignKey(
                         blank=True,
                         null=True,
                         on_delete=django.db.models.deletion.PROTECT,
-                        related_name="cash_sessions_closed",
+                        related_name='cash_sessions_closed',
                         to=settings.AUTH_USER_MODEL,
                     ),
                 ),
                 (
-                    "company",
+                    'company',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="%(class)s_set",
-                        to="p_v_App.company",
+                        related_name='%(class)s_set',
+                        to='p_v_App.company',
                     ),
                 ),
                 (
-                    "opened_by",
+                    'opened_by',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
-                        related_name="cash_sessions_opened",
+                        related_name='cash_sessions_opened',
                         to=settings.AUTH_USER_MODEL,
                     ),
                 ),
             ],
             options={
-                "verbose_name": "Sessão de caixa",
-                "verbose_name_plural": "Sessões de caixa",
-                "ordering": ["-opened_at"],
+                'verbose_name': 'Sessão de caixa',
+                'verbose_name_plural': 'Sessões de caixa',
+                'ordering': ['-opened_at'],
             },
         ),
         migrations.CreateModel(
-            name="CashMovement",
+            name='CashMovement',
             fields=[
                 (
-                    "id",
+                    'id',
                     models.BigAutoField(
                         auto_created=True,
                         primary_key=True,
                         serialize=False,
-                        verbose_name="ID",
+                        verbose_name='ID',
                     ),
                 ),
                 (
-                    "type",
+                    'type',
                     models.CharField(
-                        choices=[("entry", "Entrada"), ("exit", "Saída")], max_length=5
+                        choices=[('entry', 'Entrada'), ('exit', 'Saída')], max_length=5
                     ),
                 ),
                 (
-                    "amount",
+                    'amount',
                     models.DecimalField(
                         decimal_places=2,
                         max_digits=10,
                         validators=[
-                            django.core.validators.MinValueValidator(Decimal("0.00"))
+                            django.core.validators.MinValueValidator(
+                                Decimal('0.00'))
                         ],
                     ),
                 ),
                 (
-                    "payment_method",
+                    'payment_method',
                     models.CharField(
                         blank=True,
                         choices=[
-                            ("PIX", "Pix"),
-                            ("DINHEIRO", "Dinheiro"),
-                            ("DEBITO", "Débito"),
-                            ("CREDITO", "Crédito"),
-                            ("MULTI", "Pagamentos múltiplos"),
-                            ("AJUSTE", "Ajuste manual"),
+                            ('PIX', 'Pix'),
+                            ('DINHEIRO', 'Dinheiro'),
+                            ('DEBITO', 'Débito'),
+                            ('CREDITO', 'Crédito'),
+                            ('MULTI', 'Pagamentos múltiplos'),
+                            ('AJUSTE', 'Ajuste manual'),
                         ],
                         max_length=10,
                     ),
                 ),
-                ("description", models.CharField(max_length=255)),
-                ("note", models.TextField(blank=True)),
+                ('description', models.CharField(max_length=255)),
+                ('note', models.TextField(blank=True)),
                 (
-                    "recorded_at",
+                    'recorded_at',
                     models.DateTimeField(default=django.utils.timezone.now),
                 ),
                 (
-                    "company",
+                    'company',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="%(class)s_set",
-                        to="p_v_App.company",
+                        related_name='%(class)s_set',
+                        to='p_v_App.company',
                     ),
                 ),
                 (
-                    "recorded_by",
+                    'recorded_by',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
-                        related_name="cash_movements",
+                        related_name='cash_movements',
                         to=settings.AUTH_USER_MODEL,
                     ),
                 ),
                 (
-                    "sale",
+                    'sale',
                     models.ForeignKey(
                         blank=True,
                         null=True,
                         on_delete=django.db.models.deletion.SET_NULL,
-                        related_name="cash_movements",
-                        to="p_v_App.sales",
+                        related_name='cash_movements',
+                        to='p_v_App.sales',
                     ),
                 ),
                 (
-                    "session",
+                    'session',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="movements",
-                        to="p_v_App.cashregistersession",
+                        related_name='movements',
+                        to='p_v_App.cashregistersession',
                     ),
                 ),
             ],
             options={
-                "verbose_name": "Movimentação de caixa",
-                "verbose_name_plural": "Movimentações de caixa",
-                "ordering": ["-recorded_at"],
+                'verbose_name': 'Movimentação de caixa',
+                'verbose_name_plural': 'Movimentações de caixa',
+                'ordering': ['-recorded_at'],
             },
         ),
         migrations.CreateModel(
-            name="SalePayment",
+            name='SalePayment',
             fields=[
                 (
-                    "id",
+                    'id',
                     models.BigAutoField(
                         auto_created=True,
                         primary_key=True,
                         serialize=False,
-                        verbose_name="ID",
+                        verbose_name='ID',
                     ),
                 ),
                 (
-                    "method",
+                    'method',
                     models.CharField(
                         choices=[
-                            ("PIX", "Pix"),
-                            ("DINHEIRO", "Dinheiro"),
-                            ("DEBITO", "Débito"),
-                            ("CREDITO", "Crédito"),
-                            ("MULTI", "Pagamentos múltiplos"),
+                            ('PIX', 'Pix'),
+                            ('DINHEIRO', 'Dinheiro'),
+                            ('DEBITO', 'Débito'),
+                            ('CREDITO', 'Crédito'),
+                            ('MULTI', 'Pagamentos múltiplos'),
                         ],
                         max_length=10,
                     ),
                 ),
                 (
-                    "tendered_amount",
+                    'tendered_amount',
                     models.DecimalField(
                         decimal_places=2,
                         max_digits=10,
                         validators=[
-                            django.core.validators.MinValueValidator(Decimal("0.00"))
+                            django.core.validators.MinValueValidator(
+                                Decimal('0.00'))
                         ],
                     ),
                 ),
                 (
-                    "applied_amount",
+                    'applied_amount',
                     models.DecimalField(
                         decimal_places=2,
                         max_digits=10,
                         validators=[
-                            django.core.validators.MinValueValidator(Decimal("0.00"))
+                            django.core.validators.MinValueValidator(
+                                Decimal('0.00'))
                         ],
                     ),
                 ),
                 (
-                    "change_amount",
+                    'change_amount',
                     models.DecimalField(
                         decimal_places=2,
-                        default=Decimal("0.00"),
+                        default=Decimal('0.00'),
                         max_digits=10,
                         validators=[
-                            django.core.validators.MinValueValidator(Decimal("0.00"))
+                            django.core.validators.MinValueValidator(
+                                Decimal('0.00'))
                         ],
                     ),
                 ),
                 (
-                    "recorded_at",
+                    'recorded_at',
                     models.DateTimeField(default=django.utils.timezone.now),
                 ),
                 (
-                    "company",
+                    'company',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="%(class)s_set",
-                        to="p_v_App.company",
+                        related_name='%(class)s_set',
+                        to='p_v_App.company',
                     ),
                 ),
                 (
-                    "recorded_by",
+                    'recorded_by',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
-                        related_name="sale_payments",
+                        related_name='sale_payments',
                         to=settings.AUTH_USER_MODEL,
                     ),
                 ),
                 (
-                    "sale",
+                    'sale',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="payments",
-                        to="p_v_App.sales",
+                        related_name='payments',
+                        to='p_v_App.sales',
                     ),
                 ),
             ],
             options={
-                "verbose_name": "Pagamento de venda",
-                "verbose_name_plural": "Pagamentos de vendas",
-                "ordering": ["-recorded_at"],
+                'verbose_name': 'Pagamento de venda',
+                'verbose_name_plural': 'Pagamentos de vendas',
+                'ordering': ['-recorded_at'],
             },
         ),
     ]

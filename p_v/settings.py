@@ -1,4 +1,3 @@
-from django.apps import AppConfig
 from pathlib import Path
 import dj_database_url
 import os
@@ -20,8 +19,6 @@ ALLOWED_HOSTS = [
     # Ou para aceitar qualquer domínio (menos seguro):
     # '*'
 ]
-
-
 
 
 INSTALLED_APPS = [
@@ -46,7 +43,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    "whitenoise.middleware.WhiteNoiseMiddleware",
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -80,8 +77,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'p_v.wsgi.application'
 
 
-
-
 DATABASES = {
     'default': dj_database_url.config(
         default='postgresql://postgres:IcmskSFcjSccnTXfeWockdteMBzPRZpO@shortline.proxy.rlwy.net:35872/railway',
@@ -89,7 +84,7 @@ DATABASES = {
         ssl_require=not DEBUG
     )
 }
-#teste
+# teste
 
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -106,8 +101,6 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-
-
 
 
 LANGUAGE_CODE = 'pt-br'
@@ -128,12 +121,10 @@ CSRF_TRUSTED_ORIGINS = [
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = (
-    
+
     './static',
 )
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

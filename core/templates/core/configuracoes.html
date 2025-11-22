@@ -1,0 +1,117 @@
+{% extends 'core/base.html' %}
+
+{% block pageContent %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+  <div class="ds-hero mb-3">
+    <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-3 justify-content-between">
+      <div>
+        <p class="mb-1 text-uppercase small fw-semibold ds-text-secondary">Configurações</p>
+        <h2 class="h4 mb-1 ds-text-primary">Impressora padrão</h2>
+        <p class="text-muted mb-0">Escolha a impressora padrão para recibos. Será usada automaticamente após registrar uma venda.</p>
+      </div>
+      <div class="ds-kpi text-center">
+        <div class="small text-muted">Tenant ativo</div>
+        <div class="fw-bold">{{ request.user.profile.company.name|default:'—' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ds-card w-100 p-4">
+    <form method="post" novalidate class="ds-page">
+      {% csrf_token %}
+      <div class="row gy-4">
+        <div class="col-12 col-lg-8">
+          <label class="form-label ds-form-label" for="{{ form.default_printer.id_for_label }}">
+            {{ form.default_printer.label }}
+          </label>
+          <div class="d-flex flex-column flex-md-row gap-2 align-items-stretch align-items-md-center">
+            <div class="flex-grow-1">
+              {{ form.default_printer }}
+              {% if printers %}
+              <datalist id="printers">
+                {% for printer in printers %}
+                <option value="{{ printer }}"></option>
+                {% endfor %}
+              </datalist>
+              {% endif %}
+              {% if form.default_printer.help_text %}
+              <div class="form-text">{{ form.default_printer.help_text }}</div>
+              {% endif %}
+              {% if form.default_printer.errors %}
+              <div class="text-danger small mt-1">{{ form.default_printer.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <button type="button" class="ds-btn ds-btn-secondary" data-bs-toggle="modal" data-bs-target="#printerModal">
+              {{ printers|length|default:0 }} impressoras encontradas
+            </button>
+          </div>
+          {% if not printers %}
+          <div class="alert alert-warning mt-2 mb-0">
+            Nenhuma impressora foi encontrada neste servidor/host. Você ainda pode digitar manualmente o nome ou caminho.
+          </div>
+          {% endif %}
+        </div>
+        <div class="col-12">
+          <div class="d-flex flex-wrap gap-2">
+            <button type="submit" class="ds-btn ds-btn-primary">Salvar configurações</button>
+            <a href="{% url 'home-page' %}" class="ds-btn ds-btn-secondary">Voltar para o dashboard</a>
+          </div>
+          <div class="mt-2 text-muted small">
+            Dica: use o mesmo nome de impressora que aparece ao imprimir recibos em Vendas. O sistema vai tentar usá-la automaticamente.
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal de seleção de impressora -->
+<div class="modal fade" id="printerModal" tabindex="-1" aria-labelledby="printerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content ds-card p-0">
+      <div class="modal-header">
+        <h5 class="modal-title ds-text-primary" id="printerModalLabel">Selecione a impressora</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        {% if printers %}
+        <div class="list-group">
+          {% for printer in printers %}
+          <button type="button" class="list-group-item list-group-item-action printer-option text-start" data-printer="{{ printer }}">
+            {{ printer }}
+          </button>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-info mb-0">
+          Não encontramos impressoras disponíveis neste host. Confirme se o serviço está rodando na mesma máquina da impressora ou preencha o campo manualmente.
+        </div>
+        {% endif %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="ds-btn ds-btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block ScriptBlock %}
+{{ block.super }}
+<script>
+  (function () {
+    const printerInput = document.getElementById('{{ form.default_printer.id_for_label }}');
+    document.querySelectorAll('.printer-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const name = btn.getAttribute('data-printer');
+        printerInput.value = name;
+        const modalEl = document.getElementById('printerModal');
+        if (modalEl && typeof bootstrap !== 'undefined') {
+          const modal = bootstrap.Modal.getInstance(modalEl);
+          modal && modal.hide();
+        }
+      });
+    });
+  })();
+</script>
+{% endblock ScriptBlock %}
+{% endblock pageContent %}

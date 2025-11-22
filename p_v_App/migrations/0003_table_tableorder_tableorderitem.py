@@ -15,15 +15,18 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Table',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.BigAutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
                 ('number', models.PositiveIntegerField()),
                 ('name', models.CharField(blank=True, max_length=120)),
                 ('capacity', models.PositiveIntegerField(default=1)),
                 ('is_active', models.BooleanField(default=True)),
                 ('notes', models.TextField(blank=True)),
-                ('created_at', models.DateTimeField(default=django.utils.timezone.now)),
+                ('created_at', models.DateTimeField(
+                    default=django.utils.timezone.now)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('company', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(class)s_set', to='p_v_App.company')),
+                ('company', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                 related_name='%(class)s_set', to='p_v_App.company')),
             ],
             options={
                 'ordering': ['number'],
@@ -33,20 +36,30 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='TableOrder',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('status', models.CharField(choices=[('open', 'Aberta'), ('closed', 'Fechada'), ('canceled', 'Cancelada')], default='open', max_length=10)),
+                ('id', models.BigAutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
+                ('status', models.CharField(choices=[('open', 'Aberta'), ('closed', 'Fechada'), (
+                    'canceled', 'Cancelada')], default='open', max_length=10)),
                 ('waiter_name', models.CharField(blank=True, max_length=150)),
                 ('people_count', models.PositiveIntegerField(default=1)),
-                ('service_charge', models.DecimalField(decimal_places=2, default=0, max_digits=8)),
-                ('discount_amount', models.DecimalField(decimal_places=2, default=0, max_digits=8)),
-                ('payment_method', models.CharField(blank=True, choices=[('PIX', 'Pix'), ('DINHEIRO', 'Dinheiro'), ('DEBITO', 'Débito'), ('CREDITO', 'Crédito')], max_length=10)),
+                ('service_charge', models.DecimalField(
+                    decimal_places=2, default=0, max_digits=8)),
+                ('discount_amount', models.DecimalField(
+                    decimal_places=2, default=0, max_digits=8)),
+                ('payment_method', models.CharField(blank=True, choices=[
+                 ('PIX', 'Pix'), ('DINHEIRO', 'Dinheiro'), ('DEBITO', 'Débito'), ('CREDITO', 'Crédito')], max_length=10)),
                 ('notes', models.TextField(blank=True)),
-                ('subtotal', models.DecimalField(decimal_places=2, default=0, max_digits=10)),
-                ('total', models.DecimalField(decimal_places=2, default=0, max_digits=10)),
-                ('opened_at', models.DateTimeField(default=django.utils.timezone.now)),
+                ('subtotal', models.DecimalField(
+                    decimal_places=2, default=0, max_digits=10)),
+                ('total', models.DecimalField(
+                    decimal_places=2, default=0, max_digits=10)),
+                ('opened_at', models.DateTimeField(
+                    default=django.utils.timezone.now)),
                 ('closed_at', models.DateTimeField(blank=True, null=True)),
-                ('company', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(class)s_set', to='p_v_App.company')),
-                ('table', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='orders', to='p_v_App.table')),
+                ('company', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                 related_name='%(class)s_set', to='p_v_App.company')),
+                ('table', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT,
+                 related_name='orders', to='p_v_App.table')),
             ],
             options={
                 'ordering': ['-opened_at'],
@@ -55,14 +68,21 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='TableOrderItem',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('quantity', models.DecimalField(decimal_places=2, default=1, max_digits=8)),
-                ('unit_price', models.DecimalField(decimal_places=2, max_digits=8)),
+                ('id', models.BigAutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
+                ('quantity', models.DecimalField(
+                    decimal_places=2, default=1, max_digits=8)),
+                ('unit_price', models.DecimalField(
+                    decimal_places=2, max_digits=8)),
                 ('notes', models.CharField(blank=True, max_length=255)),
-                ('total', models.DecimalField(decimal_places=2, default=0, max_digits=10)),
-                ('added_at', models.DateTimeField(default=django.utils.timezone.now)),
-                ('order', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='p_v_App.tableorder')),
-                ('product', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='p_v_App.products')),
+                ('total', models.DecimalField(
+                    decimal_places=2, default=0, max_digits=10)),
+                ('added_at', models.DateTimeField(
+                    default=django.utils.timezone.now)),
+                ('order', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                 related_name='items', to='p_v_App.tableorder')),
+                ('product', models.ForeignKey(
+                    on_delete=django.db.models.deletion.PROTECT, to='p_v_App.products')),
             ],
             options={
                 'ordering': ['added_at'],

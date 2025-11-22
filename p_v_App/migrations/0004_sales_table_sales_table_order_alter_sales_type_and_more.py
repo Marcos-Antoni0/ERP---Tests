@@ -15,28 +15,34 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='sales',
             name='table',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='sales', to='p_v_App.table'),
+            field=models.ForeignKey(
+                blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='sales', to='p_v_App.table'),
         ),
         migrations.AddField(
             model_name='sales',
             name='table_order',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='sales', to='p_v_App.tableorder'),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL,
+                                    related_name='sales', to='p_v_App.tableorder'),
         ),
         migrations.AlterField(
             model_name='sales',
             name='type',
-            field=models.CharField(default='venda', help_text='Define a origem da venda (ex.: venda, pedido, Mesa 5)', max_length=40),
+            field=models.CharField(
+                default='venda', help_text='Define a origem da venda (ex.: venda, pedido, Mesa 5)', max_length=40),
         ),
         migrations.CreateModel(
             name='Garcom',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.BigAutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=120)),
                 ('code', models.CharField(max_length=50)),
                 ('is_active', models.BooleanField(default=True)),
-                ('created_at', models.DateTimeField(default=django.utils.timezone.now)),
+                ('created_at', models.DateTimeField(
+                    default=django.utils.timezone.now)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('company', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(class)s_set', to='p_v_App.company')),
+                ('company', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                 related_name='%(class)s_set', to='p_v_App.company')),
             ],
             options={
                 'ordering': ['name'],
@@ -46,11 +52,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='table',
             name='waiter',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='current_tables', to='p_v_App.garcom'),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL,
+                                    related_name='current_tables', to='p_v_App.garcom'),
         ),
         migrations.AddField(
             model_name='tableorder',
             name='waiter',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='orders', to='p_v_App.garcom'),
+            field=models.ForeignKey(
+                blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='orders', to='p_v_App.garcom'),
         ),
     ]

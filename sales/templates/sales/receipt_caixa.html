@@ -220,44 +220,17 @@
 </div>
 
 <script>
-  document.getElementById('cash-receipt-print').addEventListener('click', function () {
-    const content = document.getElementById('cash-receipt').innerHTML;
-    const printWindow = window.open('', '_blank', 'width=320,height=600,menubar=no,toolbar=no');
-    printWindow.document.open();
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html lang="pt-BR">
-        <head>
-          <meta charset="UTF-8" />
-          <title>{{ title }}</title>
-          <style>
-            @page { size: 64mm auto; margin: 0; }
-            html, body {
-              margin: 0;
-              width: 64mm;
-              font-family: 'Arial', 'Helvetica', sans-serif;
-              font-size: 13px;
-              font-weight: 600;
-              line-height: 1.4;
-              background: #fff;
-              color: #000;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .thermal-actions { display: none; }
-            .thermal-divider { border: none; border-top: 1px dashed #000; margin: 6px 0; }
-          </style>
-        </head>
-        <body>
-          ${content}
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.onload = function () {
-      printWindow.focus();
-      printWindow.print();
-      printWindow.close();
-    };
-  });
+  const printBtn = document.getElementById('cash-receipt-print');
+
+  function triggerPrint() {
+    window.focus();
+    window.print();
+  }
+
+  printBtn.addEventListener('click', triggerPrint);
+
+  const autoPrint = {{ auto_print|default:False|yesno:"true,false" }};
+  if (autoPrint) {
+    setTimeout(triggerPrint, 200);
+  }
 </script>

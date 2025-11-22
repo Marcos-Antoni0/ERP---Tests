@@ -8,33 +8,33 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("p_v_App", "0007_pedido_discount_reason_pedido_discount_total_and_more"),
+        ('p_v_App', '0007_pedido_discount_reason_pedido_discount_total_and_more'),
     ]
 
     operations = [
         migrations.AddField(
-            model_name="products",
-            name="combo_max_flavors",
+            model_name='products',
+            name='combo_max_flavors',
             field=models.PositiveSmallIntegerField(
                 blank=True,
-                help_text="Número máximo de itens diferentes permitidos por combo.",
+                help_text='Número máximo de itens diferentes permitidos por combo.',
                 null=True,
             ),
         ),
         migrations.AddField(
-            model_name="products",
-            name="combo_total_quantity",
+            model_name='products',
+            name='combo_total_quantity',
             field=models.DecimalField(
                 blank=True,
                 decimal_places=3,
-                help_text="Quantidade total consumida por venda do combo.",
+                help_text='Quantidade total consumida por venda do combo.',
                 max_digits=12,
                 null=True,
             ),
         ),
         migrations.AddField(
-            model_name="products",
-            name="is_combo",
+            model_name='products',
+            name='is_combo',
             field=models.BooleanField(default=False),
         ),
 
@@ -43,11 +43,11 @@ class Migration(migrations.Migration):
             database_operations=[],  # não tocar no banco; já é movement_type
             state_operations=[
                 migrations.AlterField(
-                    model_name="cashmovement",
-                    name="type",
+                    model_name='cashmovement',
+                    name='type',
                     field=models.CharField(
-                        choices=[("entry", "Entrada"), ("exit", "Saída")],
-                        db_column="movement_type",
+                        choices=[('entry', 'Entrada'), ('exit', 'Saída')],
+                        db_column='movement_type',
                         max_length=5,
                     ),
                 ),
@@ -56,123 +56,123 @@ class Migration(migrations.Migration):
         # ▲▲▲ FIM DA SUBSTITUIÇÃO ▲▲▲
 
         migrations.CreateModel(
-            name="PedidoComboItem",
+            name='PedidoComboItem',
             fields=[
                 (
-                    "id",
+                    'id',
                     models.BigAutoField(
                         auto_created=True,
                         primary_key=True,
                         serialize=False,
-                        verbose_name="ID",
+                        verbose_name='ID',
                     ),
                 ),
-                ("quantity", models.DecimalField(decimal_places=3, max_digits=12)),
+                ('quantity', models.DecimalField(decimal_places=3, max_digits=12)),
                 (
-                    "component",
+                    'component',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
-                        to="p_v_App.products",
+                        to='p_v_App.products',
                     ),
                 ),
                 (
-                    "pedido_item",
+                    'pedido_item',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="combo_components",
-                        to="p_v_App.pedidoitem",
+                        related_name='combo_components',
+                        to='p_v_App.pedidoitem',
                     ),
                 ),
             ],
             options={
-                "verbose_name": "Componente de Combo (Pedido)",
-                "verbose_name_plural": "Componentes de Combo (Pedidos)",
+                'verbose_name': 'Componente de Combo (Pedido)',
+                'verbose_name_plural': 'Componentes de Combo (Pedidos)',
             },
         ),
         migrations.CreateModel(
-            name="SaleComboItem",
+            name='SaleComboItem',
             fields=[
                 (
-                    "id",
+                    'id',
                     models.BigAutoField(
                         auto_created=True,
                         primary_key=True,
                         serialize=False,
-                        verbose_name="ID",
+                        verbose_name='ID',
                     ),
                 ),
-                ("quantity", models.DecimalField(decimal_places=3, max_digits=12)),
+                ('quantity', models.DecimalField(decimal_places=3, max_digits=12)),
                 (
-                    "component",
+                    'component',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
-                        to="p_v_App.products",
+                        to='p_v_App.products',
                     ),
                 ),
                 (
-                    "sale_item",
+                    'sale_item',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="combo_components",
-                        to="p_v_App.salesitems",
+                        related_name='combo_components',
+                        to='p_v_App.salesitems',
                     ),
                 ),
             ],
             options={
-                "verbose_name": "Componente de Combo (Venda)",
-                "verbose_name_plural": "Componentes de Combo (Vendas)",
+                'verbose_name': 'Componente de Combo (Venda)',
+                'verbose_name_plural': 'Componentes de Combo (Vendas)',
             },
         ),
         migrations.CreateModel(
-            name="ProductComboItem",
+            name='ProductComboItem',
             fields=[
                 (
-                    "id",
+                    'id',
                     models.BigAutoField(
                         auto_created=True,
                         primary_key=True,
                         serialize=False,
-                        verbose_name="ID",
+                        verbose_name='ID',
                     ),
                 ),
                 (
-                    "quantity",
+                    'quantity',
                     models.DecimalField(
                         decimal_places=3,
-                        default=Decimal("0.000"),
-                        help_text="Quantidade padrão consumida por combo.",
+                        default=Decimal('0.000'),
+                        help_text='Quantidade padrão consumida por combo.',
                         max_digits=12,
                     ),
                 ),
                 (
-                    "combo",
+                    'combo',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="combo_items",
-                        to="p_v_App.products",
+                        related_name='combo_items',
+                        to='p_v_App.products',
                     ),
                 ),
                 (
-                    "company",
+                    'company',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="%(class)s_set",
-                        to="p_v_App.company",
+                        related_name='%(class)s_set',
+                        to='p_v_App.company',
                     ),
                 ),
                 (
-                    "component",
+                    'component',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
-                        related_name="component_of_combos",
-                        to="p_v_App.products",
+                        related_name='component_of_combos',
+                        to='p_v_App.products',
                     ),
                 ),
             ],
             options={
-                "verbose_name": "Item de Combo",
-                "verbose_name_plural": "Itens de Combo",
-                "unique_together": {("combo", "component", "company")},
+                'verbose_name': 'Item de Combo',
+                'verbose_name_plural': 'Itens de Combo',
+                'unique_together': {('combo', 'component', 'company')},
             },
         ),
     ]

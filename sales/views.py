@@ -45,6 +45,7 @@ from sales.utils import (
     parse_payment_entries,
     payment_summary_for_sale,
     register_sale_payments,
+    trigger_auto_print,
 )
 
 
@@ -396,8 +397,18 @@ def save_pos(request):
                                 quantity=component['total_quantity'],
                             )
 
-                resp = {'status': 'success',
-                        'sale_id': pedido.id, 'type': 'pedido'}
+                try:
+                    print_status, print_message = trigger_auto_print(pedido)
+                except Exception as print_exc:  # noqa: BLE001
+                    print_status, print_message = False, f'Falha ao acionar impressao: {print_exc}'
+
+                resp = {
+                    'status': 'success',
+                    'sale_id': pedido.id,
+                    'type': 'pedido',
+                    'print_status': 'success' if print_status else 'skipped',
+                    'print_message': print_message,
+                }
         except Exception as exc:
             resp['msg'] = f'Erro ao processar pedido: {exc}'
         return JsonResponse(resp)
@@ -502,11 +513,18 @@ def save_pos(request):
                         pass
 
             register_sale_payments(venda, allocations, request.user)
+            try:
+                print_status, print_message = trigger_auto_print(venda)
+            except Exception as print_exc:  # noqa: BLE001
+                print_status, print_message = False, f'Falha ao acionar impressao: {print_exc}'
+
             resp = {
                 'status': 'success',
                 'sale_id': venda.id,
                 'type': 'venda',
                 'receipt_url': reverse('receipt-modal') + f'?id={venda.id}&auto_print=1',
+                'print_status': 'success' if print_status else 'skipped',
+                'print_message': print_message,
             }
     except Exception as exc:
         resp['msg'] = f'Erro ao processar venda: {exc}'

@@ -222,15 +222,58 @@
 <script>
   const printBtn = document.getElementById('cash-receipt-print');
 
-  function triggerPrint() {
-    window.focus();
-    window.print();
+  function openPrintWindow() {
+    const content = document.getElementById('cash-receipt').outerHTML;
+    const printWindow = window.open('', '_blank', 'width=320,height=600,menubar=no,toolbar=no');
+    if (!printWindow) return;
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+        <head>
+          <meta charset="UTF-8" />
+          <title>{{ title }}</title>
+          <style>
+            @page { size: 64mm auto; margin: 0; }
+            html, body {
+              margin: 0;
+              width: 64mm;
+              background: #fff;
+              color: #000;
+              font-family: 'Arial', 'Helvetica', sans-serif;
+              font-size: 13px;
+              font-weight: 600;
+              line-height: 1.4;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .thermal-wrapper { padding: 0 2mm 4mm; box-sizing: border-box; }
+            .thermal-divider { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+            .thermal-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+            .thermal-items .item { display: flex; justify-content: space-between; margin-bottom: 2px; }
+            .item-name { flex: 1; padding: 0 4px; }
+          </style>
+        </head>
+        <body>
+          ${content}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.onload = function () {
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    };
   }
 
-  printBtn.addEventListener('click', triggerPrint);
+  if (printBtn) {
+    printBtn.addEventListener('click', openPrintWindow);
+  }
 
   const autoPrint = {{ auto_print|default:False|yesno:"true,false" }};
   if (autoPrint) {
-    setTimeout(triggerPrint, 200);
+    setTimeout(openPrintWindow, 200);
   }
 </script>

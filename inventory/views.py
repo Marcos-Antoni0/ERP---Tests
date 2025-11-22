@@ -1,5 +1,7 @@
+import json
 import re
 import unicodedata
+import xml.etree.ElementTree as ET
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from django.contrib import messages
@@ -8,6 +10,7 @@ from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db.models import F, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views import View
 
 from core.utils import get_user_company
 from p_v_App.models import Category, Estoque, Products
@@ -554,3 +557,220 @@ def download_estoque_template(request):
     )
     workbook.save(response)
     return response
+
+
+class EstoqueXMLUploadView(View):
+    template_name = 'inventory/estoque_xml_upload.html'
+
+    def get(self, request):
+        user_company = get_user_company(request)
+        if not user_company:
+            messages.error(
+                request, 'Usuário não está associado a nenhuma empresa.')
+            return redirect('estoque')
+
+        return render(
+            request,
+            self.template_name,
+            {
+                'expected_fields': ['cProd', 'xProd', 'qCom', 'vUnCom', 'vUnTrib'],
+                'csrf_token_value': request.META.get('CSRF_COOKIE', ''),
+            },
+        )
+
+    def post(self, request):
+        user_company = get_user_company(request)
+        if not user_company:
+            return JsonResponse(
+                {'status': 'failed',
+                 'msg': 'Usuário não está associado a nenhuma empresa.'}
+            )
+
+        content_type = request.META.get('CONTENT_TYPE', '')
+        if content_type.startswith('application/json'):
+            try:
+                payload = json.loads(request.body.decode('utf-8'))
+                items = payload.get('items') or []
+            except (TypeError, ValueError):
+                return JsonResponse(
+                    {'status': 'failed', 'msg': 'Payload JSON inválido.'}
+                )
+            return self._apply_items(user_company, items)
+
+        upload_file = request.FILES.get('file')
+        if not upload_file:
+            return JsonResponse(
+                {'status': 'failed', 'msg': 'Envie um arquivo XML para importar.'}
+            )
+
+        parsed_items, errors = self._parse_xml_items(upload_file, user_company)
+        status = 'success' if parsed_items else 'failed'
+        if errors and parsed_items:
+            status = 'partial'
+        if not parsed_items and not errors:
+            errors.append('Nenhum item de estoque encontrado no XML informado.')
+
+        return JsonResponse(
+            {
+                'status': status,
+                'items': parsed_items,
+                'errors': errors,
+                'msg': 'Pré-visualização pronta.' if parsed_items else 'Nenhum item encontrado.',
+            }
+        )
+
+    def _parse_xml_items(self, upload_file, company):
+        try:
+            tree = ET.parse(upload_file)
+            root = tree.getroot()
+        except Exception:
+            return [], ['Não foi possível ler o XML enviado.']
+
+        def strip_tag(tag):
+            return tag.split('}', 1)[-1] if '}' in tag else tag
+
+        def find_child_text(element, name):
+            for child in element:
+                if strip_tag(child.tag) == name:
+                    return (child.text or '').strip()
+            return ''
+
+        items = []
+        errors = []
+        for node in root.iter():
+            if strip_tag(node.tag) != 'det':
+                continue
+
+            prod = next(
+                (child for child in node if strip_tag(child.tag) == 'prod'),
+                None,
+            )
+            if prod is None:
+                continue
+
+            code = find_child_text(prod, 'cProd')
+            name = find_child_text(prod, 'xProd')
+            if not code and not name:
+                continue
+
+            quantity_value = _parse_decimal_cell(find_child_text(prod, 'qCom')) or Decimal('0')
+            price_value = _parse_decimal_cell(
+                find_child_text(prod, 'vUnCom') or find_child_text(prod, 'vProd')
+            )
+            cost_value = _parse_decimal_cell(find_child_text(prod, 'vUnTrib')) or price_value
+
+            product = Products.objects.filter(
+                company=company, code__iexact=code).first() if code else None
+            category_name = ''
+            if product and product.category_id:
+                category_name = product.category_id.name
+
+            items.append(
+                {
+                    'code': code,
+                    'name': name,
+                    'quantity': float(quantity_value) if quantity_value is not None else 0,
+                    'price': float(price_value)
+                    if price_value is not None
+                    else float(product.price if product else 0),
+                    'cost': float(cost_value)
+                    if cost_value is not None
+                    else float(product.custo if product else 0),
+                    'category': category_name,
+                    'status': 1,
+                }
+            )
+
+        if not items:
+            errors.append('Nenhum item de estoque encontrado no XML informado.')
+
+        return items, errors
+
+    def _apply_items(self, company, items):
+        if not isinstance(items, list):
+            return JsonResponse({'status': 'failed', 'msg': 'Lista de itens inválida.'})
+
+        created = 0
+        updated = 0
+        errors: list[str] = []
+
+        for idx, item in enumerate(items, start=1):
+            code = str(item.get('code') or '').strip()
+            if not code:
+                errors.append(f'Linha {idx}: informe o código do produto.')
+                continue
+
+            qty_value = _parse_int_cell(item.get('quantity'))
+            if qty_value is None or qty_value < 0:
+                errors.append(f'Linha {idx}: quantidade inválida.')
+                continue
+
+            status_value = _parse_status_cell(item.get('status'))
+            if status_value is None:
+                status_value = 1
+
+            price_value = _parse_decimal_cell(item.get('price'))
+            cost_value = _parse_decimal_cell(item.get('cost'))
+
+            product = Products.objects.filter(
+                company=company, code__iexact=code).first()
+            if not product:
+                errors.append(f'Linha {idx}: produto {code} não encontrado.')
+                continue
+
+            category = product.category_id
+            category_name = str(item.get('category') or '').strip()
+            if category_name:
+                category = Category.objects.filter(
+                    company=company, name__iexact=category_name
+                ).first()
+                if not category:
+                    category = Category.objects.create(
+                        company=company,
+                        name=category_name,
+                        description='',
+                        status=1,
+                    )
+
+            estoque_obj = Estoque.objects.filter(
+                company=company, produto=product).first()
+            if estoque_obj:
+                estoque_obj.quantidade = (estoque_obj.quantidade or 0) + qty_value
+                estoque_obj.categoria = category
+                if price_value is not None:
+                    estoque_obj.preco = float(price_value)
+                if cost_value is not None:
+                    estoque_obj.custo = float(cost_value)
+                estoque_obj.descricao = product
+                estoque_obj.status = status_value if status_value in (0, 1) else estoque_obj.status
+                estoque_obj.save()
+                updated += 1
+            else:
+                Estoque.objects.create(
+                    company=company,
+                    produto=product,
+                    categoria=category,
+                    quantidade=qty_value,
+                    validade=0,
+                    preco=float(price_value if price_value is not None else product.price or 0),
+                    custo=float(cost_value if cost_value is not None else product.custo or 0),
+                    status=status_value if status_value in (0, 1) else 1,
+                    descricao=product,
+                )
+                created += 1
+
+        status = 'success' if not errors else 'partial'
+        msg = f'Estoque atualizado: {created} criado(s) e {updated} atualizado(s).'
+        if not created and not updated:
+            status = 'failed'
+            msg = 'Nenhum item foi aplicado.'
+
+        return JsonResponse(
+            {
+                'status': status,
+                'created': created,
+                'updated': updated,
+                'errors': errors,
+                'msg': msg,
+            }
+        )

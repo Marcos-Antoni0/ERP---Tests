@@ -9,6 +9,9 @@
                 <button class="btn btn-outline-secondary btn-sm rounded-0" id="upload_inventory">
                     <i class="mdi mdi-upload"></i><span> Importar Excel</span>
                 </button>
+                <button class="btn btn-outline-info btn-sm rounded-0" id="upload_inventory_xml">
+                    <i class="mdi mdi-xml"></i><span> Entrada XML</span>
+                </button>
             </div>
         </div>
     </div>
@@ -236,6 +239,9 @@
         })
         $('#upload_inventory').click(function() {
             uni_modal("Importar Estoque", "{% url 'upload-estoque-page' %}")
+        })
+        $('#upload_inventory_xml').click(function() {
+            uni_modal("Entrada de Estoque via XML", "{% url 'upload-estoque-xml' %}")
         })
         $('.edit-data').click(function() {
             uni_modal("Editar Produto", "{% url 'manage_products_estoque-page' %}?id=" + $(this).attr('data-id'))

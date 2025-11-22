@@ -17,18 +17,18 @@
 | | T3.4 | Adicionar campo de seleção de impressora padrão no modelo `Company` ou em um novo modelo `ConfiguracaoSistema`. | [X] |
 | | T3.5 | Implementar a lógica de salvar a impressora padrão para o *tenant* atual. | [X] |
 
-### Sprint 2: Impressão e Estoque XML (7 dias)
+### Sprint 2: Impressão e Estoque XML (7 dias) [X]
 
 | Tarefa | Subtarefa | Escopo e Implementação | Checklist |
 | :--- | :--- | :--- | :--- |
-| **T4.0** | **Impressão Automática** | Implementar o *trigger* de impressão após a finalização da venda. | [ ] |
-| | T4.1 | Identificar o ponto de finalização da venda (ex: `Sales.save()` ou *view* de finalização). | [ ] |
-| | T4.2 | Criar a função de impressão que lê a impressora padrão configurada. | [ ] |
-| | T4.3 | Integrar a função de impressão no fluxo de finalização de venda. | [ ] |
-| **T5.0** | **Entrada XML** | Desenvolver a funcionalidade de importação de estoque via XML. | [ ] |
-| | T5.1 | Criar a *Class Based View* (CBV) `EstoqueXMLUploadView` em `inventory/views.py`. | [ ] |
-| | T5.2 | Criar o *template* para *upload* de arquivo XML. | [ ] |
-| | T5.3 | Implementar a lógica de *parsing* do XML para extrair dados de produtos/estoque. | [ ] |
-| | T5.4 | Criar o *template* de **modal** com interface de planilha (Excel-like) para pré-visualização e edição. | [ ] |
-| | T5.5 | Implementar a lógica de *backend* para receber os dados editados do modal e atualizar/criar o estoque (modelo `Estoque`). | [ ] |
-| | T5.6 | Adicionar *signals.py* em `inventory` se necessário para a lógica de estoque. | [ ] |
+| **T4.0** | **Impressão Automática** | Implementar o *trigger* de impressão após a finalização da venda. | [X] |
+| | T4.1 | Identificar o ponto de finalização da venda (ex: `Sales.save()` ou *view* de finalização). | [X] |
+| | T4.2 | Criar a função de impressão que lê a impressora padrão configurada. | [X] |
+| | T4.3 | Integrar a função de impressão no fluxo de finalização de venda, comandas e pedidos. | [X] |
+| **T5.0** | **Entrada XML** | Desenvolver a funcionalidade de importação de estoque via XML. | [X] |
+| | T5.1 | Criar a *Class Based View* (CBV) `EstoqueXMLUploadView` em `inventory/views.py`. | [X] |
+| | T5.2 | Criar o *template* para *upload* de arquivo XML. | [X] |
+| | T5.3 | Implementar a lógica de *parsing* do XML para extrair dados de produtos/estoque. | [X] |
+| | T5.4 | Criar o *template* de **modal** com interface de planilha (Excel-like) para pré-visualização e edição. | [X] |
+| | T5.5 | Implementar a lógica de *backend* para receber os dados editados do modal e atualizar/criar o estoque (modelo `Estoque`). | [X] |
+| | T5.6 | Adicionar *signals.py* em `inventory` se necessário para a lógica de estoque. | [X] |

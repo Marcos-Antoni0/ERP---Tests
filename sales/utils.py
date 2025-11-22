@@ -13,6 +13,8 @@ from django.db.models import Sum
 from p_v_App.models import (
     CashMovement,
     CashRegisterSession,
+    Pedido,
+    PedidoItem,
     SalePayment,
     Sales,
     salesItems,
@@ -35,73 +37,186 @@ def print_sale_receipt_to_printer(sale: Sales, *, printer_name: str | None = Non
     Tenta imprimir um recibo simplificado na impressora informada.
     Depende de win32print (Windows). Em outros ambientes, retorna mensagem de fallback.
     """
+    printer_name = printer_name or _safe_get_default_printer(getattr(sale, 'company', None))
     if not printer_name:
-        return False, 'Nenhuma impressora padrão configurada.'
-    try:
-        import win32print
-    except Exception:
-        return False, 'Módulo win32print indisponível neste ambiente.'
+        return False, 'Nenhuma impressora padrao configurada.'
 
-    lines = []
-    lines.append(f'{sale.company.name}')
-    lines.append(f'Venda: {sale.code}')
-    lines.append(f'Data: {sale.date_added:%d/%m/%Y %H:%M}')
+    items = [
+        {
+            'name': getattr(item.product_id, 'name', 'Item'),
+            'qty': item.qty,
+            'price': item.price,
+        }
+        for item in salesItems.objects.filter(sale_id=sale).select_related('product_id')
+    ]
+
+    payments = [
+        {
+            'label': payment.get_method_display(),
+            'applied': payment.applied_amount,
+            'tendered': payment.tendered_amount,
+            'change': payment.change_amount,
+        }
+        for payment in sale.payments.all().order_by('recorded_at')
+    ]
+
+    payload = _build_receipt_payload(
+        header_label='Venda',
+        code=sale.code,
+        company_name=getattr(sale.company, 'name', 'Empresa'),
+        created_at=sale.date_added,
+        items=items,
+        delivery_fee=sale.delivery_fee or 0,
+        discount_total=sale.discount_total or 0,
+        grand_total=sale.grand_total or 0,
+        payments=payments,
+    )
+
+    return _send_payload_to_printer(printer_name, payload)
+
+
+def print_pedido_receipt_to_printer(pedido: Pedido, *, printer_name: str | None = None) -> tuple[bool, str]:
+    printer_name = printer_name or _safe_get_default_printer(getattr(pedido, 'company', None))
+    if not printer_name:
+        return False, 'Nenhuma impressora padrao configurada.'
+
+    items = [
+        {
+            'name': getattr(item.product, 'name', 'Item'),
+            'qty': item.qty,
+            'price': item.price,
+        }
+        for item in PedidoItem.objects.filter(pedido=pedido).select_related('product')
+    ]
+
+    payments = []
+    if pedido.tendered_amount:
+        payments.append(
+            {
+                'label': dict(Sales.FORMA_PAGAMENTO_CHOICES).get(
+                    pedido.forma_pagamento, pedido.forma_pagamento
+                ),
+                'applied': pedido.grand_total,
+                'tendered': pedido.tendered_amount,
+                'change': pedido.amount_change,
+            }
+        )
+
+    payload = _build_receipt_payload(
+        header_label='Pedido',
+        code=pedido.code,
+        company_name=getattr(pedido.company, 'name', 'Empresa'),
+        created_at=pedido.date_added,
+        items=items,
+        delivery_fee=getattr(pedido, 'taxa_entrega', 0) or 0,
+        discount_total=pedido.discount_total or 0,
+        grand_total=pedido.grand_total or 0,
+        payments=payments,
+    )
+
+    return _send_payload_to_printer(printer_name, payload)
+
+
+def _build_receipt_payload(
+    *,
+    header_label: str,
+    code: str,
+    company_name: str,
+    created_at,
+    items: list[dict],
+    delivery_fee,
+    discount_total,
+    grand_total,
+    payments: list[dict] | None = None,
+) -> str:
+    lines: list[str] = []
+    lines.append(company_name or 'Empresa')
+    lines.append(f'{header_label}: {code}')
+    if created_at:
+        lines.append(f'Data: {created_at:%d/%m/%Y %H:%M}')
     lines.append('-' * 32)
 
     total_itens = Decimal('0')
-    for item in salesItems.objects.filter(sale_id=sale).select_related('product_id'):
-        name = getattr(item.product_id, 'name', 'Item')
-        qty = Decimal(item.qty or 0)
-        price = Decimal(item.price or 0)
+    for item in items:
+        name = (item.get('name') or 'Item')[:20]
+        qty = _to_decimal(item.get('qty'))
+        price = _to_decimal(item.get('price'))
         line_total = qty * price
         total_itens += line_total
-        lines.append(f'{name[:20]:<20}')
+        lines.append(f'{name:<20}')
         lines.append(f'{qty:>5} x {price:>8.2f} = {line_total:>8.2f}')
 
     lines.append('-' * 32)
-    if sale.delivery_fee:
-        lines.append(f'Taxa entrega: R$ {Decimal(sale.delivery_fee):.2f}')
-    if sale.discount_total:
-        lines.append(f'Desconto:    -R$ {Decimal(sale.discount_total):.2f}')
+    delivery = _to_decimal(delivery_fee)
+    discount = _to_decimal(discount_total)
+    if delivery > 0:
+        lines.append(f'Taxa entrega: R$ {delivery:.2f}')
+    if discount > 0:
+        lines.append(f'Desconto:    -R$ {discount:.2f}')
     lines.append(f'Subtotal:    R$ {total_itens:.2f}')
-    lines.append(f'Total:       R$ {Decimal(sale.grand_total or 0):.2f}')
+    lines.append(f'Total:       R$ {_to_decimal(grand_total):.2f}')
 
-    payments = sale.payments.all().order_by('recorded_at')
-    if payments.exists():
+    payments = payments or []
+    if payments:
         lines.append('-' * 32)
         lines.append('Pagamentos:')
-        for pay in payments:
-            lines.append(
-                f'{pay.get_method_display():<12} R$ {Decimal(pay.applied_amount):.2f}'
-            )
-        total_tendered = sum((Decimal(p.tendered_amount) for p in payments), Decimal('0'))
-        total_change = sum((Decimal(p.change_amount) for p in payments), Decimal('0'))
-        lines.append(f'Recebido:    R$ {total_tendered:.2f}')
-        if total_change:
+        total_tendered = Decimal('0')
+        total_change = Decimal('0')
+        for payment in payments:
+            label = payment.get('label') or 'Pagamento'
+            applied = _to_decimal(payment.get('applied'))
+            tendered = _to_decimal(payment.get('tendered'))
+            change = _to_decimal(payment.get('change'))
+            lines.append(f'{label:<12} R$ {applied:.2f}')
+            total_tendered += tendered
+            total_change += change
+        if total_tendered > 0:
+            lines.append(f'Recebido:    R$ {total_tendered:.2f}')
+        if total_change > 0:
             lines.append(f'Troco:       R$ {total_change:.2f}')
 
     lines.append('-' * 32)
-    lines.append('Obrigado pela preferência!')
-    payload = '\n'.join(lines)
+    lines.append('Obrigado pela preferencia!')
+    return '\n'.join(lines)
+
+
+def _send_payload_to_printer(printer_name: str, payload: str) -> tuple[bool, str]:
+    try:
+        import win32print
+    except Exception:
+        return False, 'Modulo win32print indisponivel neste ambiente.'
 
     try:
         handle = win32print.OpenPrinter(printer_name)
     except Exception as exc:
-        return False, f'Não foi possível abrir a impressora "{printer_name}": {exc}'
+        return False, f'Nao foi possivel abrir a impressora "{printer_name}": {exc}'
 
     try:
-        win32print.StartDocPrinter(
-            handle, 1, ('ERP FortTech - Recibo', None, 'RAW'))
+        win32print.StartDocPrinter(handle, 1, ('ERP FortTech - Recibo', None, 'RAW'))
         win32print.StartPagePrinter(handle)
         win32print.WritePrinter(handle, payload.encode(settings.DEFAULT_CHARSET))
         win32print.EndPagePrinter(handle)
         win32print.EndDocPrinter(handle)
     except Exception as exc:
-        return False, f'Erro ao enviar impressão: {exc}'
+        return False, f'Erro ao enviar impressao: {exc}'
     finally:
-        win32print.ClosePrinter(handle)
+        try:
+            win32print.ClosePrinter(handle)
+        except Exception:
+            pass
 
     return True, f'Recibo enviado para {printer_name}'
+
+
+def trigger_auto_print(record) -> tuple[bool, str]:
+    try:
+        if isinstance(record, Sales):
+            return print_sale_receipt_to_printer(record)
+        if isinstance(record, Pedido):
+            return print_pedido_receipt_to_printer(record)
+    except Exception as exc:
+        return False, f'Erro ao processar impressao automatica: {exc}'
+    return False, 'Tipo de registro nao suportado para impressao automatica.'
 
 
 def _to_decimal(value) -> Decimal:

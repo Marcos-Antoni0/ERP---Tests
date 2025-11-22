@@ -12,6 +12,11 @@ urlpatterns = [
          name='save-product-estoque-page'),
     path('upload_estoque', views.upload_estoque, name='upload-estoque-page'),
     path(
+        'upload_estoque_xml',
+        views.EstoqueXMLUploadView.as_view(),
+        name='upload-estoque-xml',
+    ),
+    path(
         'download_estoque_template',
         views.download_estoque_template,
         name='download-estoque-template',

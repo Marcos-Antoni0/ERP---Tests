@@ -13,7 +13,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = [
     'mult-tenent-system-production.up.railway.app',
-    'erp-product-copy-production.up.railway.app',
+    'erpforttech.up.railway.app',
     'localhost',
     '127.0.0.1',
     # Ou para aceitar qualquer domínio (menos seguro):
@@ -115,7 +115,7 @@ CSRF_TRUSTED_ORIGINS = [
     'https://web-production-05c6b.up.railway.app',
     'https://8000-iiq7h8kg72desdjs2n7v4-3b10558d.manus.computer',
     'https://mult-tenent-system-production.up.railway.app',
-    'https://erp-product-copy-production.up.railway.app',
+    'https://erpforttech.up.railway.app',
 ]
 
 STATIC_URL = '/static/'

@@ -84,7 +84,6 @@ DATABASES = {
         ssl_require=not DEBUG
     )
 }
-# teste
 
 
 AUTH_PASSWORD_VALIDATORS = [

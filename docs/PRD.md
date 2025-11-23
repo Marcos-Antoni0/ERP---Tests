@@ -1,8 +1,8 @@
-# Documento de Requisitos do Produto (PRD) - ERP Tests
+# Documento de Requisitos do Produto (PRD) - ERP FortTech
 
 ## 1. Visão Geral
 
-Este Documento de Requisitos do Produto (PRD) detalha as especificações e os requisitos para a evolução do sistema ERP (Enterprise Resource Planning) de teste, atualmente hospedado no repositório **ERP---Tests**. O objetivo principal é aprimorar a usabilidade, a arquitetura e adicionar funcionalidades críticas para o gerenciamento de estoque e vendas, mantendo uma abordagem de desenvolvimento *full-stack* com Django e Tailwind CSS.
+Este Documento de Requisitos do Produto (PRD) detalha as especificações e os requisitos para a evolução do sistema ERP (Enterprise Resource Planning) de teste, atualmente hospedado no repositório **ERP FortTech**. O objetivo principal é aprimorar a usabilidade, a arquitetura e adicionar funcionalidades críticas para o gerenciamento de estoque e vendas, mantendo uma abordagem de desenvolvimento *full-stack* com Django e Tailwind CSS.
 
 ## 2. Sobre o Produto
 
@@ -48,20 +48,24 @@ A nova aba "Configurações" deve ser o ponto central para ajustes específicos 
 *   **RFN-03:** Deve conter um campo para **escolher a impressora padrão** para o *tenant* atual.
 *   **RFN-04:** Deve ser criado o conteúdo estático e as funções necessárias para o gerenciamento de configurações.
 
-### 7.2. Impressão Automática de Vendas
+### 7.2. Impressão de Vendas
 
 **Requisitos:**
-*   **RFN-05:** Implementar um mecanismo que, ao finalizar uma venda (`Sales` ou `Pedido`), dispare imediatamente o comando de impressão.
-*   **RFN-06:** A impressão deve ser direcionada para a impressora mapeada no campo de configurações (RFN-03).
+*   **RFN-05 (Impressão Automática - PDV):** Implementar um mecanismo que, ao finalizar uma venda no PDV, dispare imediatamente o comando de impressão do **recibo de caixa** (`receipt_caixa.html`).
+*   **RFN-06 (Impressão Automática - Direcionamento):** A impressão automática deve ser direcionada para a impressora mapeada no campo de configurações (RFN-03).
+*   **RFN-07 (Impressão Manual - Correção de Layout):** Corrigir o layout de **todos os recibos** do sistema (exceto o de venda automática) para evitar o corte de informações (como visto na imagem), garantindo que o conteúdo se ajuste corretamente ao formato de impressão.
+*   **RFN-08 (Impressão Manual - Layout Unificado):** Garantir que o layout de impressão manual siga o padrão visual e de informações do recibo de caixa (`receipt_caixa.html`).
 
 ### 7.3. Entrada de Estoque via XML
 
 **Requisitos:**
-*   **RFN-07:** Criar uma *view* e *template* para a funcionalidade de "Entrada de Estoque via XML" dentro da *app* `inventory`.
-*   **RFN-08:** O usuário deve poder carregar um arquivo XML (provavelmente uma Nota Fiscal Eletrônica - NFe).
-*   **RFN-09:** O sistema deve extrair as informações relevantes do XML (código do produto, nome, quantidade, preço, custo, etc.).
-*   **RFN-10:** Após a extração, um **modal** deve ser exibido, apresentando os dados em formato de planilha (semelhante ao Excel), permitindo que o usuário **modifique** os dados antes de confirmar a entrada no estoque.
-*   **RFN-11:** A confirmação do modal deve realizar a atualização ou criação dos itens de estoque (modelo `Estoque` em `p_v_App/models.py`).
+*   **RFN-09:** Criar uma *view* e *template* para a funcionalidade de "Entrada de Estoque via XML" dentro da *app* `inventory`.
+*   **RFN-10:** O usuário deve poder carregar um arquivo XML (provavelmente uma Nota Fiscal Eletrônica - NFe).
+*   **RFN-11:** O sistema deve extrair as informações relevantes do XML (código do produto, nome, quantidade, preço, custo, etc.).
+*   **RFN-12 (Melhoria - Campos de Valor):** Aumentar o tamanho dos campos de preenchimento de valores (custo e preço) no modal de pré-visualização para que o número completo seja visível.
+*   **RFN-13 (Melhoria - Preenchimento Automático):** Preencher automaticamente o campo **custo** com o valor unitário da nota fiscal (XML) e o campo **preço** com o valor de venda cadastrado no produto (modelo `Products`).
+*   **RFN-14:** Após a extração, um **modal** deve ser exibido, apresentando os dados em formato de planilha (semelhante ao Excel), permitindo que o usuário **modifique** os dados antes de confirmar a entrada no estoque.
+*   **RFN-15:** A confirmação do modal deve realizar a atualização ou criação dos itens de estoque (modelo `Estoque` em `p_v_App/models.py`).
 
 ### 7.4. Flowchart (Mermaid)
 
@@ -81,6 +85,25 @@ graph TD
     F --> I;
     I --> J[Retornar para a tela de Estoque];
 \`\`\`
+
+### 7.5. Novas Funcionalidades: Clientes e Débitos
+
+#### 7.5.1. Clientes
+
+**Requisitos:**
+*   **RFN-16:** Criar uma nova *app* `clients` para gerenciar o cadastro de clientes.
+*   **RFN-17:** O cadastro de clientes deve ser simples e rápido, focado em agilizar a venda.
+*   **RFN-18:** Implementar uma tela de visualização de clientes que mostre o **histórico de consumo** (valor total já gasto) com o comerciante.
+*   **RFN-19:** A tela de clientes deve permitir a visualização rápida dos **débitos pendentes** do cliente.
+
+#### 7.5.2. Débitos
+
+**Requisitos:**
+*   **RFN-20:** Criar uma nova *app* `debts` para gerenciar o controle e histórico de débitos de clientes.
+*   **RFN-21:** O sistema deve permitir registrar um débito associado a um cliente.
+*   **RFN-22:** Deve ser possível visualizar o **histórico completo** de débitos (abertos e pagos) de um cliente.
+*   **RFN-23:** O sistema deve permitir a **baixa** (pagamento) de um débito, registrando a data e forma de pagamento.
+*   **RFN-24:** A funcionalidade deve ser projetada para ser prática e intuitiva, baseada em sistemas de mercado.
 
 ## 8. Requisitos Não-Funcionais
 

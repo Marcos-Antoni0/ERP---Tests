@@ -1,36 +1,44 @@
-# Repository Guidelines
+# AGENTS - ERP FortTech
 
-## Project Structure & Module Organization
-- Django 5 monolith; settings live in `p_v/settings.py`, entrypoint is `manage.py`.
-- Domain apps sit at the repo root (`p_v_App` for tenancy/session middleware, `accounts`, `core`, `catalog`, `sales`, `orders`, `inventory`, `tables`, `staff`). Each app keeps its own `migrations/`, `templates/<app>/`, and optional utilities.
-- Shared templates can go under `templates/` (added in `TEMPLATES[DIRS]`); static assets are under `static/p_v_App/assets` and collected to `staticfiles` for deploys.
-- Product docs and constraints are in `docs/` (PRD, architecture, design system, coding standards) and should be read before changing flows.
+## Documentos-base
+- PRD: `docs/PRD.md`.
+- Arquitetura técnica: `docs/Arquitetura T‚cnica.md`.
+- Padrões de código: `docs/Padräes de C¢digo.md`.
+- Design System: `docs/Design System.md`.
+- Planejamento: `docs/14. Lista de Tarefas.md`.
+- Consulte `docs/README.md` ao iniciar qualquer trabalho para manter alinhamento com o desenho original do produto.
 
-## Build, Test, and Development Commands
-- Set up env: `python -m venv .venv && .\\.venv\\Scripts\\activate && pip install -r requirements.txt`.
-- Migrations: `python manage.py makemigrations` then `python manage.py migrate`.
-- Run locally: `python manage.py runserver 0.0.0.0:8000`.
-- Tests: `python manage.py test` (or `python manage.py test sales.tests` for targeted runs).
-- Release prep: `python manage.py collectstatic --noinput`; create an admin for manual QA with `python manage.py createsuperuser`.
+## Estrutura e organização
+- Monolito Django 5; entrypoint `manage.py`; settings em `p_v/settings.py`.
+- Apps de domínio na raiz: `p_v_App` (tenancy/middleware), `accounts`, `core`, `catalog`, `sales`, `orders`, `inventory`, `tables`, `staff`; cada um guarda `migrations/`, `templates/<app>/` e utilitários próprios.
+- Templates compartilhados em `templates/`; estáticos em `static/p_v_App/assets` (coletados para `staticfiles`).
+- Siga os fluxos e limites descritos na documentação antes de alterar regras de negócio.
 
-## Coding Style & Naming Conventions
-- Python: 4-space indent; snake_case for functions/variables; PascalCase for models/forms/views classes; keep file names lowercase with underscores.
-- Keep business logic inside app services/models, not views/templates; respect existing middleware flow in `p_v_App/middleware*.py`.
-- Templates: name partials with a leading `_` and place under the owning app’s template folder; avoid inline business rules in templates.
-- Follow project specifics in `docs/Padrões de Código.md`; prefer small, composable functions with docstrings only when intent is not obvious.
+## Setup e comandos
+- Criar ambiente: `python -m venv .venv && .\\.venv\\Scripts\\activate && pip install -r requirements.txt`.
+- Migrações: `python manage.py makemigrations` e `python manage.py migrate`.
+- Servidor local: `python manage.py runserver 0.0.0.0:8000`.
+- Testes: `python manage.py test` (ou direcionado, ex.: `python manage.py test sales.tests`).
+- Release: `python manage.py collectstatic --noinput` e criar admin com `python manage.py createsuperuser` para QA manual.
 
-## Testing Guidelines
-- Default Django test runner; tests live in each app’s `tests.py` (split into modules if they grow).
-- Write unit tests for model/business rules (discounts, stock checks, tenant isolation) and middleware behaviors; add integration tests around critical order/sale flows.
-- Use descriptive test names (`test_updates_stock_on_confirmed_order`); keep fixtures/app factories close to the app under test.
-- Run tests before pushing and after schema changes or new migrations.
+## Padrões de código
+- PEP 8; 4 espaços; `snake_case` para funções/variáveis e `PascalCase` para classes; arquivos em minúsculas com underscore.
+- Priorize CBVs conforme Padrões de Código; lógica de negócio em serviços/modelos, não em views/templates.
+- Respeite fluxo de middleware em `p_v_App/middleware*.py`; evite regras de negócio em templates (use partials com `_` no nome).
+- Use aspas simples por padrão; prefira funções pequenas e composáveis; docstrings apenas quando a intenção não for óbvia.
 
-## Commit & Pull Request Guidelines
-- Commit messages in imperative mood with a short scope: `feat(sales): handle combo discounts`; one concern per commit when possible.
-- PRs should include: summary of change and rationale, linked issue/task ID, notes on migrations/data impacts, screenshots for UI changes, and test results (`python manage.py test`).
-- If touching docs or config, note which files were updated (e.g., `docs/Design System.md`, `p_v/settings.py`) and any operational steps required.
+## Testes
+- Testes em `tests.py` de cada app (divida em módulos se crescerem).
+- Cubra regras críticas: descontos, estoque, isolamento de tenant, middleware; adicione testes de integração para pedidos/vendas.
+- Nomeie testes de forma descritiva (`test_updates_stock_on_confirmed_order`); mantenha fixtures/factories próximas ao app.
+- Rode a suíte antes de push e após mudanças de esquema ou novas migrações.
 
-## Security & Configuration Tips
-- Do not commit secrets; set `SECRET_KEY`, `DATABASE_URL`, and other credentials via env vars (settings uses `dj_database_url` overrides).
-- For deployments set `DEBUG=False`, update `ALLOWED_HOSTS`, and ensure `CSRF_TRUSTED_ORIGINS` covers the target domain.
-- When adding static assets, verify `collectstatic` output and that WhiteNoise paths remain valid.
+## Commits e PRs
+- Mensagens no imperativo com escopo curto (`feat(sales): handle combo discounts`); uma preocupação por commit quando possível.
+- PRs devem trazer resumo, racional, ID da tarefa, notas de migração/dados, screenshots de UI e resultado de testes (`python manage.py test`).
+- Se alterar docs ou config, cite arquivos tocados (ex.: `docs/Design System.md`, `p_v/settings.py`) e passos operacionais.
+
+## Segurança e configuração
+- Não versionar segredos; definir `SECRET_KEY`, `DATABASE_URL` etc. via variáveis de ambiente (`dj_database_url` faz override).
+- Em produção, usar `DEBUG=False`, ajustar `ALLOWED_HOSTS` e `CSRF_TRUSTED_ORIGINS` para o domínio alvo.
+- Ao adicionar estáticos, valide o output do `collectstatic` e caminhos do WhiteNoise.

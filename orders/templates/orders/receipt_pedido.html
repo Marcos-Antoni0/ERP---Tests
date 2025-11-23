@@ -26,6 +26,12 @@
     text-rendering: optimizeSpeed;
   }
 
+  .thermal-wrapper h6 {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
   .thermal-divider {
     border: none;
     border-top: 1px dashed #000;
@@ -36,6 +42,10 @@
     display: flex;
     justify-content: space-between;
     margin-bottom: 4px;
+  }
+
+  .thermal-items {
+    margin-top: 4px;
   }
 
   .thermal-items .item {
@@ -85,8 +95,9 @@
 <div class="thermal-shell">
   <div class="thermal-wrapper" id="pedido-receipt">
       <div style="text-align: center; margin-bottom: 6px;">
-        <h6 style="margin: 0; text-transform: uppercase; letter-spacing: 1px;">{{ title }}</h6>
-        <small>{% if is_sale_record %}Pedido Finalizado{% else %}Pedido (Delivery){% endif %}</small>
+        <h6>{{ title }}</h6>
+        <small>Recibo Nao Fiscal</small>
+        <div class="text-muted" style="font-size: 11px;">Pedido / Delivery</div>
       </div>
 
       <hr class="thermal-divider" />
@@ -97,7 +108,7 @@
           <span>{{ record.date_added|date:"d/m/Y H:i" }}</span>
         </div>
         <div class="thermal-row">
-          <span>Código:</span>
+          <span>Codigo:</span>
           <span>{{ record.code }}</span>
         </div>
         {% if record.customer_name %}
@@ -109,19 +120,41 @@
         {% with address=customer_address|default:record.endereco_entrega %}
         {% if address %}
         <div class="thermal-row" style="flex-direction: column; align-items: flex-start;">
-          <span>Endereço:</span>
+          <span>Endereco:</span>
           <span>{{ address }}</span>
         </div>
         {% endif %}
         {% endwith %}
         <div class="thermal-row">
           <span>Pagamento:</span>
-          <span>{{ record.forma_pagamento|default:"N/I" }}</span>
+          <span>{{ record.get_forma_pagamento_display|default:"N/I" }}</span>
         </div>
         {% if record.status %}
         <div class="thermal-row">
           <span>Status:</span>
           <span>{{ record.status|title }}</span>
+        </div>
+        {% endif %}
+        {% if payments %}
+        <div class="mt-1">
+          {% for payment in payments %}
+          <div class="thermal-row">
+            <span>{{ payment.method }}</span>
+            <span>R$ {{ payment.applied|floatformat:2 }}</span>
+          </div>
+          {% if payment.tendered != payment.applied or payment.change > 0 %}
+          <div class="thermal-row" style="font-size: 11px;">
+            <span>Recebido</span>
+            <span>R$ {{ payment.tendered|floatformat:2 }}</span>
+          </div>
+          {% if payment.change > 0 %}
+          <div class="thermal-row" style="font-size: 11px;">
+            <span>Troco</span>
+            <span>R$ {{ payment.change|floatformat:2 }}</span>
+          </div>
+          {% endif %}
+          {% endif %}
+          {% endfor %}
         </div>
         {% endif %}
       </div>
@@ -181,7 +214,7 @@
         <span>R$ {{ record.grand_total|floatformat:2 }}</span>
       </div>
       <div class="thermal-row">
-        <span>Pago</span>
+        <span>Recebido</span>
         <span>R$ {{ record.tendered_amount|floatformat:2 }}</span>
       </div>
       <div class="thermal-row">
@@ -202,9 +235,13 @@
 </div>
 
 <script>
-  document.getElementById('pedido-receipt-print').addEventListener('click', function () {
-    const content = document.getElementById('pedido-receipt').innerHTML;
+  const pedidoPrintBtn = document.getElementById('pedido-receipt-print');
+
+  function openPedidoPrintWindow() {
+    const content = document.getElementById('pedido-receipt').outerHTML;
     const printWindow = window.open('', '_blank', 'width=320,height=600,menubar=no,toolbar=no');
+    if (!printWindow) return;
+
     printWindow.document.open();
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -217,17 +254,20 @@
             html, body {
               margin: 0;
               width: 64mm;
+              background: #fff;
+              color: #000;
               font-family: 'Arial', 'Helvetica', sans-serif;
               font-size: 13px;
               font-weight: 600;
               line-height: 1.4;
-              background: #fff;
-              color: #000;
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
             }
-            .thermal-actions { display: none; }
+            .thermal-wrapper { padding: 0 2mm 4mm; box-sizing: border-box; }
             .thermal-divider { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+            .thermal-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+            .thermal-items .item { display: flex; justify-content: space-between; margin-bottom: 2px; }
+            .item-name { flex: 1; padding: 0 4px; }
           </style>
         </head>
         <body>
@@ -241,5 +281,14 @@
       printWindow.print();
       printWindow.close();
     };
-  });
+  }
+
+  if (pedidoPrintBtn) {
+    pedidoPrintBtn.addEventListener('click', openPedidoPrintWindow);
+  }
+
+  const pedidoAutoPrint = {{ auto_print|default:False|yesno:"true,false" }};
+  if (pedidoAutoPrint) {
+    setTimeout(openPedidoPrintWindow, 200);
+  }
 </script>

@@ -20,6 +20,7 @@ from sales.utils import (
     get_open_cash_session,
     get_primary_payment_method,
     parse_payment_entries,
+    trigger_auto_print,
 )
 from p_v_App.models import Garcom, Products, Sales, Table, TableOrder, TableOrderItem
 from tables.forms import (
@@ -416,6 +417,20 @@ def fechar_comanda(request, order_id):
             table = order.table
             table.waiter = None
             table.save(update_fields=['waiter'])
+
+        receipt_url = reverse('receipt-modal') + f'?id={sale.id}&auto_print=1'
+        try:
+            print_status, print_message = trigger_auto_print(sale)
+        except Exception as exc:  # noqa: BLE001
+            print_status, print_message = False, f'Erro ao acionar impressao: {exc}'
+        if print_status:
+            messages.success(request, f'Recibo enviado para impressora padrao. {print_message}')
+        else:
+            messages.info(
+                request,
+                f'Impressao automatica nao executada: {print_message}. '
+                f'Use o recibo manual em {receipt_url} se necessario.',
+            )
 
         messages.success(
             request,

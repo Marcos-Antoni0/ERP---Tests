@@ -654,16 +654,26 @@ class EstoqueXMLUploadView(View):
                 continue
 
             quantity_value = _parse_decimal_cell(find_child_text(prod, 'qCom')) or Decimal('0')
-            price_value = _parse_decimal_cell(
+
+            xml_unit_price = _parse_decimal_cell(
                 find_child_text(prod, 'vUnCom') or find_child_text(prod, 'vProd')
             )
-            cost_value = _parse_decimal_cell(find_child_text(prod, 'vUnTrib')) or price_value
+            xml_unit_cost = _parse_decimal_cell(find_child_text(prod, 'vUnTrib'))
 
             product = Products.objects.filter(
                 company=company, code__iexact=code).first() if code else None
             category_name = ''
             if product and product.category_id:
                 category_name = product.category_id.name
+
+            product_price = _parse_decimal_cell(getattr(product, 'price', None)) if product else None
+            product_cost = _parse_decimal_cell(getattr(product, 'custo', None)) if product else None
+
+            cost_value = xml_unit_price if xml_unit_price is not None else xml_unit_cost
+            if cost_value is None:
+                cost_value = product_cost
+
+            price_value = product_price if product_price is not None else (xml_unit_price or xml_unit_cost)
 
             items.append(
                 {

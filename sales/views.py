@@ -406,6 +406,7 @@ def save_pos(request):
                     'status': 'success',
                     'sale_id': pedido.id,
                     'type': 'pedido',
+                    'receipt_url': reverse('receipt-modal') + f'?id={pedido.id}&auto_print=1',
                     'print_status': 'success' if print_status else 'skipped',
                     'print_message': print_message,
                 }
@@ -693,6 +694,7 @@ def receipt(request):
                 'order': order,
                 'items': items,
                 'payments': payment_details,
+                'auto_print': auto_print,
             },
         )
 
@@ -712,6 +714,8 @@ def receipt(request):
             'is_sale_record': True,
             'delivery_fee': sale.delivery_fee or 0,
             'customer_address': sale.endereco_entrega,
+            'auto_print': auto_print,
+            'payments': payment_details,
         }
         return render(request, 'orders/receipt_pedido.html', context)
 

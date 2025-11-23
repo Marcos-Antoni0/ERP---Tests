@@ -1,3 +1,16 @@
+<style>
+  .xml-preview-table th.price-col,
+  .xml-preview-table th.cost-col {
+    min-width: 150px;
+  }
+
+  .xml-preview-table input.price-field,
+  .xml-preview-table input.cost-field {
+    min-width: 150px;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+
 <div class="container-fluid">
   <div class="alert alert-info">
     <h6 class="mb-1">Entrada de Estoque via XML</h6>
@@ -42,14 +55,14 @@
           Edite qualquer célula antes de confirmar. A coluna <strong>Status</strong> define se o item ficará ativo (1) ou inativo (0) no estoque.
         </p>
         <div class="table-responsive border rounded">
-          <table class="table table-sm align-middle mb-0" id="xml-preview-table">
+          <table class="table table-sm align-middle mb-0 xml-preview-table" id="xml-preview-table">
             <thead class="table-light">
               <tr>
                 <th style="min-width: 140px;">Código</th>
                 <th style="min-width: 200px;">Nome</th>
                 <th style="width: 90px;">Quantidade</th>
-                <th style="width: 110px;">Preço</th>
-                <th style="width: 110px;">Custo</th>
+                <th class="price-col">Preço</th>
+                <th class="cost-col">Custo</th>
                 <th style="min-width: 160px;">Categoria</th>
                 <th style="width: 120px;">Status</th>
               </tr>
@@ -90,8 +103,8 @@
           <td><input type="text" name="code" class="form-control form-control-sm" value="${item.code || ''}" required></td>
           <td><input type="text" name="name" class="form-control form-control-sm" value="${item.name || ''}"></td>
           <td><input type="number" name="quantity" class="form-control form-control-sm" step="1" min="0" value="${item.quantity ?? 0}"></td>
-          <td><input type="number" name="price" class="form-control form-control-sm" step="0.01" min="0" value="${item.price ?? ''}"></td>
-          <td><input type="number" name="cost" class="form-control form-control-sm" step="0.01" min="0" value="${item.cost ?? ''}"></td>
+          <td><input type="number" name="price" class="form-control form-control-sm price-field" step="0.01" min="0" inputmode="decimal" value="${item.price ?? ''}"></td>
+          <td><input type="number" name="cost" class="form-control form-control-sm cost-field" step="0.01" min="0" inputmode="decimal" value="${item.cost ?? ''}"></td>
           <td><input type="text" name="category" class="form-control form-control-sm" value="${item.category || ''}"></td>
           <td>
             <select name="status" class="form-select form-select-sm">

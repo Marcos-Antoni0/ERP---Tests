@@ -36,6 +36,8 @@ from p_v_App.models import (
     TableOrder,
     salesItems,
 )
+from clients.models import Client
+from debts.models import Debt
 from sales.forms import CashCloseForm, CashMovementForm, CashOpenForm
 from sales.utils import (
     allocate_payments,
@@ -176,6 +178,7 @@ def pos(request):
         'product_json': json.dumps(product_json),
         'cash_session_open': bool(cash_session),
         'cash_session': cash_session,
+        'clients': Client.objects.filter(company=user_company).order_by('name'),
     }
     return render(request, 'sales/pos.html', context)
 
@@ -203,6 +206,14 @@ def save_pos(request):
 
     code = _generate_unique_code(user_company)
     combo_configs = data.getlist('combo_config[]')
+    client = None
+    client_id = data.get('client_id')
+    if client_id not in (None, '', 'null'):
+        try:
+            client = Client.objects.get(pk=int(client_id), company=user_company)
+        except (Client.DoesNotExist, ValueError):
+            resp['msg'] = 'Cliente inválido informado.'
+            return JsonResponse(resp)
 
     def resolve_combo_components(product, raw_config, combo_qty):
         if not product.is_combo:
@@ -343,6 +354,11 @@ def save_pos(request):
     if grand_total_value < Decimal('0'):
         grand_total_value = Decimal('0')
 
+    register_debt = sale_type == 'venda' and data.get('register_debt') == '1'
+    if register_debt and client is None:
+        resp['msg'] = 'Selecione um cliente para registrar o débito.'
+        return JsonResponse(resp)
+
     if sale_type == 'pedido':
         try:
             with transaction.atomic():
@@ -356,6 +372,7 @@ def save_pos(request):
                     amount_change=float(data.get('amount_change', 0) or 0),
                     forma_pagamento=data.get('forma_pagamento', 'PIX'),
                     customer_name=data.get('customer_name', ''),
+                    client=client,
                     endereco_entrega=data.get('endereco_entrega', ''),
                     taxa_entrega=float(delivery_value),
                     discount_total=float(discount_value),
@@ -426,9 +443,9 @@ def save_pos(request):
 
         try:
             payment_entries = parse_payment_entries(
-                payment_methods, payment_amounts)
+                payment_methods, payment_amounts, allow_empty=register_debt)
             allocations, tendered_total, change_total = allocate_payments(
-                grand_total_value, payment_entries
+                grand_total_value, payment_entries, allow_partial=register_debt
             )
             primary_method = get_primary_payment_method(allocations)
         except ValueError as exc:
@@ -446,6 +463,7 @@ def save_pos(request):
                 amount_change=float(change_total),
                 forma_pagamento=primary_method,
                 customer_name=data.get('customer_name', ''),
+                client=client,
                 endereco_entrega=data.get('endereco_entrega', ''),
                 delivery_fee=float(delivery_value),
                 discount_total=float(discount_value),
@@ -514,6 +532,22 @@ def save_pos(request):
                         pass
 
             register_sale_payments(venda, allocations, request.user)
+
+            paid_total = sum(
+                (allocation.get('applied') or Decimal('0'))
+                for allocation in allocations
+            )
+            remaining_due = grand_total_value - paid_total
+            if remaining_due < Decimal('0'):
+                remaining_due = Decimal('0')
+            if register_debt and remaining_due > Decimal('0.009'):
+                Debt.objects.create(
+                    company=user_company,
+                    client=client,
+                    amount=remaining_due,
+                    description=f'Venda #{venda.code} - pendência de pagamento',
+                    status=Debt.Status.OPEN,
+                )
             try:
                 print_status, print_message = trigger_auto_print(venda)
             except Exception as print_exc:  # noqa: BLE001

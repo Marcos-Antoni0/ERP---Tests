@@ -232,7 +232,7 @@ def quantize_currency(value: Decimal) -> Decimal:
     return _to_decimal(value).quantize(CENTS, rounding=ROUND_HALF_UP)
 
 
-def parse_payment_entries(raw_methods: Sequence[str], raw_amounts: Sequence[str]) -> list[dict]:
+def parse_payment_entries(raw_methods: Sequence[str], raw_amounts: Sequence[str], *, allow_empty: bool = False) -> list[dict]:
     entries: list[dict] = []
     for method, amount in zip(raw_methods, raw_amounts):
         method = (method or '').strip().upper()
@@ -244,12 +244,12 @@ def parse_payment_entries(raw_methods: Sequence[str], raw_amounts: Sequence[str]
         if amount_value <= Decimal('0'):
             continue
         entries.append({'method': method, 'amount': amount_value})
-    if not entries:
+    if not entries and not allow_empty:
         raise ValueError('Informe ao menos um pagamento com valor positivo.')
     return entries
 
 
-def allocate_payments(total_due: Decimal, entries: Sequence[dict]) -> tuple[list[dict], Decimal, Decimal]:
+def allocate_payments(total_due: Decimal, entries: Sequence[dict], *, allow_partial: bool = False) -> tuple[list[dict], Decimal, Decimal]:
     if total_due is None:
         raise ValueError('Total da venda não informado.')
     due = quantize_currency(total_due)
@@ -300,8 +300,8 @@ def allocate_payments(total_due: Decimal, entries: Sequence[dict]) -> tuple[list
             }
         )
 
-    if remaining > Decimal('0.009'):
-        raise ValueError('Os pagamentos não cobrem o valor total da venda.')
+    if remaining > Decimal('0.009') and not allow_partial:
+        raise ValueError('Os pagamentos nao cobrem o valor total da venda.')
 
     return allocations, tendered_total, change_total
 

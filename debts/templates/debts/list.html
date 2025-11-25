@@ -1,0 +1,117 @@
+{% extends "core/base.html" %}
+{% block pageContent %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+  <div class="mdc-card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h4 class="card-title mb-1">Débitos</h4>
+        <p class="text-muted mb-0">Registre débitos de clientes e marque pagamentos.</p>
+      </div>
+    </div>
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">
+        <div class="alert alert-warning h-100 mb-0">
+          <div class="fw-bold">Em aberto</div>
+          <div class="display-6">R$ {{ stats.open_total|default:0|floatformat:2 }}</div>
+          <div class="small text-muted">{{ stats.count_open|default:0 }} pendente(s)</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="alert alert-success h-100 mb-0">
+          <div class="fw-bold">Pago</div>
+          <div class="display-6">R$ {{ stats.paid_total|default:0|floatformat:2 }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-lg-4">
+        <form method="post" class="border rounded p-3 bg-light">
+          {% csrf_token %}
+          <h6 class="mb-3">Registrar débito</h6>
+          <div class="mb-2">
+            <label class="form-label">Cliente</label>
+            <select name="client_id" class="form-select form-select-sm" required>
+              <option value="">Selecione...</option>
+              {% for client in clients %}
+              <option value="{{ client.id }}">{{ client.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Valor</label>
+            <input type="number" name="amount" step="0.01" min="0.01" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Vencimento</label>
+            <input type="date" name="due_date" class="form-control form-control-sm">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Descrição</label>
+            <textarea name="description" rows="2" class="form-control form-control-sm"></textarea>
+          </div>
+          <div class="d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="mdi mdi-content-save"></i> Salvar
+            </button>
+          </div>
+        </form>
+      </div>
+      <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="btn-group btn-group-sm">
+            <a href="{% url 'debts-list' %}?status=open" class="btn btn-outline-warning {% if status_filter == 'open' %}active{% endif %}">Em aberto</a>
+            <a href="{% url 'debts-list' %}?status=paid" class="btn btn-outline-success {% if status_filter == 'paid' %}active{% endif %}">Pagos</a>
+            <a href="{% url 'debts-list' %}?status=all" class="btn btn-outline-secondary {% if status_filter == 'all' %}active{% endif %}">Todos</a>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Descrição</th>
+                <th>Valor</th>
+                <th>Vencimento</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for debt in debts %}
+              <tr>
+                <td>{{ debt.client.name }}</td>
+                <td class="small">{{ debt.description|default:"-" }}</td>
+                <td>R$ {{ debt.amount|floatformat:2 }}</td>
+                <td>{{ debt.due_date|date:"d/m/Y"|default:"-" }}</td>
+                <td>
+                  {% if debt.status == 'open' %}
+                    <span class="badge bg-warning text-dark">Em aberto</span>
+                  {% else %}
+                    <span class="badge bg-success">Pago</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  {% if debt.status == 'open' %}
+                  <form method="post" action="{% url 'debt-pay' debt.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="payment_method" value="DINHEIRO">
+                    <button type="submit" class="btn btn-success btn-sm">
+                      <i class="mdi mdi-check"></i> Dar baixa
+                    </button>
+                  </form>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="6" class="text-center text-muted">Nenhum débito encontrado.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock pageContent %}

@@ -70,6 +70,18 @@
           <i class="material-icons mdc-list-item__start-detail mdc-drawer-item-icon">receipt</i> Vendas
         </a>
       </div>
+
+      <div class="mdc-list-item mdc-drawer-item {% if current == 'clients-list' %}mdc-list-item--activated{% endif %}">
+        <a class="mdc-drawer-link" href="{% url 'clients-list' %}">
+          <i class="material-icons mdc-list-item__start-detail mdc-drawer-item-icon">person</i> Clientes
+        </a>
+      </div>
+
+      <div class="mdc-list-item mdc-drawer-item {% if current == 'debts-list' %}mdc-list-item--activated{% endif %}">
+        <a class="mdc-drawer-link" href="{% url 'debts-list' %}">
+          <i class="material-icons mdc-list-item__start-detail mdc-drawer-item-icon">account_balance</i> Débitos
+        </a>
+      </div>
       
       <div class="mdc-list-item mdc-drawer-item {% if current == 'configuracoes-page' %}mdc-list-item--activated{% endif %}">
         <a class="mdc-drawer-link" href="{% url 'configuracoes-page' %}">

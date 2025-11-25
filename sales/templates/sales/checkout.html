@@ -47,6 +47,23 @@
             <label for="customer_name" class="control-label">Nome do cliente (opcional)</label>
             <input type="text" id="customer_name" name="customer_name" class="form-control form-control-lg rounded-0" placeholder="Insira o nome do cliente">
         </div>
+        <div class="form-group mb-3">
+            <label for="client_id" class="control-label">Cliente (para vincular venda/débito)</label>
+            <select id="client_id" name="client_id" class="form-control form-control-lg rounded-0">
+                <option value="">Selecione um cliente</option>
+                {% for client in clients %}
+                <option value="{{ client.id }}">{{ client.name }}</option>
+                {% endfor %}
+            </select>
+            <small class="text-muted">Se registrar venda a prazo, selecione o cliente.</small>
+        </div>
+        <div class="form-check mb-3" id="register-debt-wrapper">
+            <input class="form-check-input" type="checkbox" value="1" id="register_debt">
+            <label class="form-check-label" for="register_debt">
+                Registrar como débito (venda a prazo)
+            </label>
+            <div class="small text-muted">Permite concluir com valor pendente e gerar débito vinculado ao cliente.</div>
+        </div>
         <div id="delivery-address-group" class="form-group mb-3" style="display:none;">
             <label for="endereco_entrega" class="control-label">Endereço (Entrega)</label>
             <input type="text" id="endereco_entrega" name="endereco_entrega" class="form-control form-control-lg rounded-0" placeholder="Insira o endereço">
@@ -82,6 +99,9 @@
         const originalPayable = parseFloat("{{ grand_total }}") || 0;
         const posForm = $('#pos-form');
         const paymentsContainer = $('#paymentsContainer');
+        const registerDebt = $('#register_debt');
+        const registerDebtWrapper = $('#register-debt-wrapper');
+        const clientSelect = $('#client_id');
 
         function normalizeNumber(value) {
             if (value === undefined || value === null) {
@@ -180,6 +200,10 @@
             $('#endereco_entrega, #taxa_entrega').prop('required', isPedido);
             $('#singlePaymentGroup, #singleTenderedGroup').toggle(isPedido);
             $('#multiPaymentGroup, #remainingGroup').toggle(!isPedido);
+            registerDebtWrapper.toggle(!isPedido);
+            if (isPedido) {
+                registerDebt.prop('checked', false);
+            }
             if (isPedido) {
                 recalcSingle();
             } else {
@@ -202,6 +226,7 @@
         $('#checkout-form').on('submit', function(e) {
             e.preventDefault();
             const saleType = $('#sale-type').val();
+            const shouldRegisterDebt = registerDebt.is(':checked');
             const discountValue = parseFloat(posForm.find('[name="discount_total"]').val()) || 0;
             if (discountValue > 0) {
                 const reason = (posForm.find('[name="discount_reason"]').val() || '').trim();
@@ -236,8 +261,14 @@
                 recalcMulti();
                 const remaining = parseFloat($('#remaining_amount').data('raw')) || 0;
                 if (remaining > 0.009) {
-                    alert('Ainda existe valor pendente para receber.');
-                    return false;
+                    if (!shouldRegisterDebt) {
+                        alert('Ainda existe valor pendente para receber.');
+                        return false;
+                    }
+                    if (!clientSelect.val()) {
+                        alert('Selecione um cliente para registrar o débito.');
+                        return false;
+                    }
                 }
                 const due = updatePayable();
                 posForm.find('[name="grand_total"]').val(due.toFixed(2));
@@ -284,6 +315,21 @@
                     type: 'hidden',
                     name: 'taxa_entrega',
                     value: $('#taxa_entrega').val()
+                }).appendTo(posForm);
+            }
+
+            if (clientSelect.val()) {
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'client_id',
+                    value: clientSelect.val()
+                }).appendTo(posForm);
+            }
+            if (shouldRegisterDebt) {
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'register_debt',
+                    value: '1'
                 }).appendTo(posForm);
             }
 

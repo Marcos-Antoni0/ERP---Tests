@@ -114,6 +114,13 @@ class ProductComboItem(TenantMixin):
 class Sales(TenantMixin):
     customer_name = models.CharField(
         'Nome do Cliente', max_length=100, blank=True, null=True)
+    client = models.ForeignKey(
+        'clients.Client',
+        related_name='sales',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     code = models.CharField(max_length=100)
     sub_total = models.FloatField(default=0)
     grand_total = models.FloatField(default=0)
@@ -234,6 +241,13 @@ class SalePayment(TenantMixin):
 class Pedido(TenantMixin):
     customer_name = models.CharField(
         'Nome do Cliente', max_length=100, blank=True, null=True)
+    client = models.ForeignKey(
+        'clients.Client',
+        related_name='orders',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     code = models.CharField(max_length=100)
     sub_total = models.FloatField(default=0)
     tax = models.FloatField(default=0)

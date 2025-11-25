@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     'inventory',
     'tables',
     'staff',
+    'clients',
+    'debts',
     'django.contrib.humanize',
 
 ]

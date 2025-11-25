@@ -415,10 +415,14 @@
               </button>
             </div>
           </form>
-          <button class="btn btn-success btn-add-table" data-bs-toggle="modal" data-bs-target="#tableModal" data-mode="create" {% if not tables_ready %}disabled{% endif %}>
-            <i class="material-icons">add</i>
-            Nova mesa
-          </button>
+            <button class="btn btn-success btn-add-table" data-bs-toggle="modal" data-bs-target="#tableModal" data-mode="create" {% if not tables_ready %}disabled{% endif %}>
+              <i class="material-icons">add</i>
+              Nova mesa
+            </button>
+          <a class="btn btn-outline-secondary btn-add-table" href="{% url 'garcons' %}">
+            <i class="material-icons">groups</i>
+            Gerenciar garçons
+          </a>
         </div>
       </div>
     </div>

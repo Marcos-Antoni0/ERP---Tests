@@ -8,7 +8,7 @@ from p_v_App.models_tenant import TenantMixin, TenantManager
 
 class Client(TenantMixin):
     name = models.CharField('Nome', max_length=150)
-    email = models.EmailField('Email', blank=True, null=True)
+    cpf = models.CharField('CPF', max_length=14, blank=True, null=True, unique=True)
     phone = models.CharField('Telefone', max_length=30, blank=True)
     address = models.TextField('Endereço', blank=True)
     created_at = models.DateTimeField('Criado em', auto_now_add=True)
@@ -34,7 +34,7 @@ class Client(TenantMixin):
             .get('total')
             or 0
         )
-        return Decimal(total)
+        return Decimal(str(total))
 
     @property
     def pending_debt_total(self) -> Decimal:
@@ -46,4 +46,4 @@ class Client(TenantMixin):
             .get('total')
             or 0
         )
-        return Decimal(total)
+        return Decimal(str(total))

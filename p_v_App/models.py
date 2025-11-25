@@ -238,6 +238,50 @@ class SalePayment(TenantMixin):
         return f'{self.sale.code} - {self.method} ({self.applied_amount})'
 
 
+class PedidoPayment(TenantMixin):
+    pedido = models.ForeignKey(
+        'Pedido',
+        related_name='payments',
+        on_delete=models.CASCADE,
+    )
+    method = models.CharField(
+        max_length=10,
+        choices=Sales.FORMA_PAGAMENTO_CHOICES,
+    )
+    tendered_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.00'))],
+    )
+    applied_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.00'))],
+    )
+    change_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00'))],
+    )
+    recorded_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='pedido_payments',
+    )
+    recorded_at = models.DateTimeField(default=timezone.now)
+
+    objects = TenantManager()
+
+    class Meta:
+        ordering = ['-recorded_at']
+        verbose_name = 'Pagamento de pedido'
+        verbose_name_plural = 'Pagamentos de pedidos'
+
+    def __str__(self):
+        return f'{self.pedido.code} - {self.method} ({self.applied_amount})'
+
+
 class Pedido(TenantMixin):
     customer_name = models.CharField(
         'Nome do Cliente', max_length=100, blank=True, null=True)

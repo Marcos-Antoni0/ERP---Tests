@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -19,7 +20,9 @@ from p_v_App.models import (
     SaleComboItem,
     Sales,
     salesItems,
+    PedidoPayment,
 )
+from sales.utils import get_primary_payment_method, register_sale_payments
 
 
 @login_required
@@ -93,6 +96,35 @@ def finalizar_pedido(request, pedido_id):
         Pedido, pk=pedido_id, status='entregue', company=user_company
     )
 
+    pedido_payments = list(
+        PedidoPayment.objects.filter(pedido=pedido).order_by('-recorded_at')
+    )
+    allocations = [
+        {
+            'method': payment.method,
+            'tendered': Decimal(payment.tendered_amount),
+            'applied': Decimal(payment.applied_amount),
+            'change': Decimal(payment.change_amount),
+        }
+        for payment in pedido_payments
+    ]
+    if allocations:
+        primary_method = get_primary_payment_method(allocations) or 'PIX'
+        tendered_total = sum((alloc['tendered'] for alloc in allocations), Decimal('0'))
+        change_total = sum((alloc['change'] for alloc in allocations), Decimal('0'))
+    else:
+        primary_method = pedido.forma_pagamento or 'PIX'
+        tendered_total = Decimal(str(pedido.tendered_amount or 0))
+        change_total = Decimal(str(pedido.amount_change or 0))
+        allocations = [
+            {
+                'method': primary_method,
+                'tendered': tendered_total,
+                'applied': Decimal(str(pedido.grand_total or 0)),
+                'change': change_total if change_total > Decimal('0') else Decimal('0'),
+            }
+        ]
+
     try:
         with transaction.atomic():
             sale_code = generate_sale_code(user_company)
@@ -105,9 +137,9 @@ def finalizar_pedido(request, pedido_id):
                 tax=pedido.tax,
                 tax_amount=pedido.tax_amount,
                 grand_total=pedido.grand_total,
-                tendered_amount=pedido.tendered_amount,
-                amount_change=pedido.amount_change,
-                forma_pagamento=pedido.forma_pagamento,
+                tendered_amount=float(tendered_total),
+                amount_change=float(change_total),
+                forma_pagamento=primary_method,
                 endereco_entrega=pedido.endereco_entrega,
                 customer_name=pedido.customer_name,
                 delivery_fee=pedido.taxa_entrega,
@@ -162,6 +194,7 @@ def finalizar_pedido(request, pedido_id):
                     except Estoque.DoesNotExist:
                         pass
 
+            register_sale_payments(venda, allocations, request.user)
             PedidoItem.objects.filter(pedido=pedido).delete()
             pedido.delete()
     except ValueError as exc:
@@ -221,6 +254,17 @@ def view_pedido(request):
         .order_by('id')
     )
 
+    payments = [
+        {
+            'method': payment.get_method_display(),
+            'method_code': payment.method,
+            'tendered': float(payment.tendered_amount),
+            'applied': float(payment.applied_amount),
+            'change': float(payment.change_amount),
+        }
+        for payment in pedido.payments.all().order_by('-recorded_at')
+    ]
+
     context = {
         'title': 'Recibo de Pedido',
         'record': pedido,
@@ -228,5 +272,6 @@ def view_pedido(request):
         'is_sale_record': False,
         'delivery_fee': pedido.taxa_entrega or 0,
         'customer_address': pedido.endereco_entrega,
+        'payments': payments,
     }
     return render(request, 'orders/receipt_pedido.html', context)

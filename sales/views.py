@@ -29,6 +29,7 @@ from p_v_App.models import (
     Pedido,
     PedidoItem,
     PedidoComboItem,
+    PedidoPayment,
     Products,
     Sales,
     SalePayment,
@@ -47,6 +48,7 @@ from sales.utils import (
     parse_payment_entries,
     payment_summary_for_sale,
     register_sale_payments,
+    VALID_PAYMENT_METHODS,
     trigger_auto_print,
 )
 
@@ -186,7 +188,17 @@ def pos(request):
 @login_required
 def checkout_modal(request):
     grand_total = request.GET.get('grand_total', 0)
-    return render(request, 'sales/checkout.html', {'grand_total': grand_total})
+    company = get_user_company(request)
+    if not company:
+        messages.error(request, 'Usuário não está associado a nenhuma empresa.')
+        return redirect('home-page')
+
+    clients = Client.objects.filter(company=company).order_by('name')
+    return render(
+        request,
+        'sales/checkout.html',
+        {'grand_total': grand_total, 'clients': clients},
+    )
 
 
 @login_required
@@ -361,6 +373,41 @@ def save_pos(request):
 
     if sale_type == 'pedido':
         try:
+            payment_methods = data.getlist('payment_method[]')
+            payment_amounts = data.getlist('payment_amount[]')
+
+            tendered_total = Decimal(str(data.get('tendered_amount', 0) or 0))
+            change_total = Decimal(str(data.get('amount_change', 0) or 0))
+            primary_method = data.get('forma_pagamento', 'PIX')
+
+            if payment_methods:
+                payment_entries = parse_payment_entries(
+                    payment_methods, payment_amounts)
+                allocations, tendered_total, change_total = allocate_payments(
+                    grand_total_value, payment_entries
+                )
+                primary_method = get_primary_payment_method(allocations)
+            else:
+                if tendered_total < grand_total_value:
+                    resp['msg'] = 'O valor pago é menor que o valor a pagar'
+                    return JsonResponse(resp)
+                change_total = tendered_total - grand_total_value
+                allocations = [
+                    {
+                        'method': primary_method,
+                        'tendered': tendered_total,
+                        'applied': grand_total_value,
+                        'change': change_total if change_total > Decimal('0') else Decimal('0'),
+                    }
+                ]
+        except ValueError as exc:
+            resp['msg'] = str(exc)
+            return JsonResponse(resp)
+        except Exception as exc:  # noqa: BLE001
+            resp['msg'] = f'Erro ao processar pagamento: {exc}'
+            return JsonResponse(resp)
+
+        try:
             with transaction.atomic():
                 pedido = Pedido.objects.create(
                     code=code,
@@ -368,9 +415,9 @@ def save_pos(request):
                     tax=float(data.get('tax', 0) or 0),
                     tax_amount=float(tax_amount_value),
                     grand_total=float(grand_total_value),
-                    tendered_amount=float(data.get('tendered_amount', 0) or 0),
-                    amount_change=float(data.get('amount_change', 0) or 0),
-                    forma_pagamento=data.get('forma_pagamento', 'PIX'),
+                    tendered_amount=float(tendered_total),
+                    amount_change=float(change_total),
+                    forma_pagamento=primary_method,
                     customer_name=data.get('customer_name', ''),
                     client=client,
                     endereco_entrega=data.get('endereco_entrega', ''),
@@ -409,10 +456,21 @@ def save_pos(request):
                             pedido_item=pedido_item).delete()
                         for component in combo_components:
                             PedidoComboItem.objects.create(
-                                pedido_item=pedido_item,
-                                component=component['component'],
-                                quantity=component['total_quantity'],
-                            )
+                            pedido_item=pedido_item,
+                            component=component['component'],
+                            quantity=component['total_quantity'],
+                        )
+
+                for allocation in allocations:
+                    PedidoPayment.objects.create(
+                        company=user_company,
+                        pedido=pedido,
+                        method=allocation['method'],
+                        tendered_amount=allocation['tendered'],
+                        applied_amount=allocation['applied'],
+                        change_amount=allocation['change'],
+                        recorded_by=request.user,
+                    )
 
                 try:
                     print_status, print_message = trigger_auto_print(pedido)
@@ -441,16 +499,37 @@ def save_pos(request):
                 fallback_amount = str(grand_total_value)
             payment_amounts = [fallback_amount]
 
-        try:
-            payment_entries = parse_payment_entries(
-                payment_methods, payment_amounts, allow_empty=register_debt)
-            allocations, tendered_total, change_total = allocate_payments(
-                grand_total_value, payment_entries, allow_partial=register_debt
+        has_positive_payment = False
+        for raw_amount in payment_amounts:
+            try:
+                if Decimal(str(raw_amount)) > Decimal('0'):
+                    has_positive_payment = True
+                    break
+            except (InvalidOperation, ValueError, TypeError):
+                continue
+
+        if register_debt and not has_positive_payment:
+            payment_entries = []
+            allocations = []
+            tendered_total = Decimal('0')
+            change_total = Decimal('0')
+            primary_method = (
+                payment_methods[0]
+                if payment_methods and payment_methods[0] in VALID_PAYMENT_METHODS
+                else 'PIX'
             )
-            primary_method = get_primary_payment_method(allocations)
-        except ValueError as exc:
-            resp['msg'] = str(exc)
-            return JsonResponse(resp)
+        else:
+            try:
+                payment_entries = parse_payment_entries(
+                    payment_methods, payment_amounts, allow_empty=register_debt
+                )
+                allocations, tendered_total, change_total = allocate_payments(
+                    grand_total_value, payment_entries, allow_partial=register_debt
+                )
+                primary_method = get_primary_payment_method(allocations)
+            except ValueError as exc:
+                resp['msg'] = str(exc)
+                return JsonResponse(resp)
 
         with transaction.atomic():
             venda = Sales.objects.create(

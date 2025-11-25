@@ -1,10 +1,9 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.shortcuts import redirect, render, get_object_or_404
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.utils import timezone
 from django.views import View
 
 from clients.models import Client
@@ -53,6 +52,7 @@ class DebtListView(LoginRequiredMixin, View):
             messages.error(request, 'Usuário não está associado a nenhuma empresa.')
             return redirect('home-page')
 
+        debt_id = request.POST.get('debt_id')
         client_id = request.POST.get('client_id')
         amount_raw = request.POST.get('amount', '0')
         description = (request.POST.get('description') or '').strip()
@@ -66,7 +66,7 @@ class DebtListView(LoginRequiredMixin, View):
 
         try:
             amount = Decimal(str(amount_raw))
-        except Exception:
+        except (InvalidOperation, ValueError):
             messages.error(request, 'Valor do débito inválido.')
             return redirect(reverse('debts-list'))
 
@@ -74,13 +74,26 @@ class DebtListView(LoginRequiredMixin, View):
             messages.error(request, 'O valor do débito deve ser maior que zero.')
             return redirect(reverse('debts-list'))
 
-        Debt.objects.create(
-            company=company,
-            client=client,
-            amount=amount,
-            description=description,
-            due_date=due_date or None,
-        )
+        payload = {
+            'client': client,
+            'amount': amount,
+            'description': description,
+            'due_date': due_date or None,
+        }
+
+        if debt_id:
+            debt = get_object_or_404(Debt, pk=debt_id, company=company)
+            if debt.status == Debt.Status.PAID:
+                messages.error(request, 'Não é possível editar um débito já pago.')
+                return redirect(reverse('debts-list'))
+
+            for field, value in payload.items():
+                setattr(debt, field, value)
+            debt.save(update_fields=list(payload.keys()))
+            messages.success(request, 'Débito atualizado.')
+            return redirect(reverse('debts-list'))
+
+        Debt.objects.create(company=company, **payload)
         messages.success(request, 'Débito registrado.')
         return redirect(reverse('debts-list'))
 
@@ -100,4 +113,21 @@ class DebtPayView(LoginRequiredMixin, View):
 
         debt.mark_paid(method=payment_method)
         messages.success(request, 'Débito baixado como pago.')
+        return redirect(reverse('debts-list'))
+
+
+class DebtDeleteView(LoginRequiredMixin, View):
+    def post(self, request, debt_id):
+        company = get_user_company(request)
+        if not company:
+            messages.error(request, 'Usuário não está associado a nenhuma empresa.')
+            return redirect('home-page')
+
+        debt = get_object_or_404(Debt, pk=debt_id, company=company)
+        if debt.status == Debt.Status.PAID:
+            messages.error(request, 'Não é possível excluir um débito já pago.')
+            return redirect(reverse('debts-list'))
+
+        debt.delete()
+        messages.success(request, 'Débito removido.')
         return redirect(reverse('debts-list'))

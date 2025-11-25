@@ -103,6 +103,23 @@
         const registerDebtWrapper = $('#register-debt-wrapper');
         const clientSelect = $('#client_id');
 
+        if (clientSelect.length) {
+            clientSelect.select2({
+                placeholder: 'Digite para buscar o cliente',
+                width: '100%',
+                allowClear: true,
+                dropdownParent: $('#uni_modal'),
+                language: {
+                    noResults: function() {
+                        return 'Nenhum cliente encontrado';
+                    },
+                    searching: function() {
+                        return 'Buscando...';
+                    }
+                }
+            });
+        }
+
         function normalizeNumber(value) {
             if (value === undefined || value === null) {
                 return 0;
@@ -158,15 +175,6 @@
             posForm.find('[name="amount_change"]').val(change.toFixed(2));
         }
 
-        function recalcSingle() {
-            const due = updatePayable();
-            const tendered = normalizeNumber($('#tendered_amount').val());
-            const change = tendered - due;
-            $('#payment_change').val(formatCurrency(change));
-            posForm.find('[name="tendered_amount"]').val(tendered.toFixed(2));
-            posForm.find('[name="amount_change"]').val(change.toFixed(2));
-        }
-
         function addPaymentRow(method, amount) {
             const template = $('#paymentRowTemplate .payment-row').first().clone();
             template.find('.payment-method').val(method || 'PIX');
@@ -194,34 +202,37 @@
             recalcMulti();
         });
 
+        function appendPaymentInputs() {
+            let hasPayment = false;
+            paymentsContainer.find('.payment-row').each(function() {
+                const method = $(this).find('.payment-method').val();
+                const amount = normalizeNumber($(this).find('.payment-amount').val());
+                if (!method || amount <= 0) {
+                    return;
+                }
+                hasPayment = true;
+                $('<input>').attr({ type: 'hidden', name: 'payment_method[]', value: method }).appendTo(posForm);
+                $('<input>').attr({ type: 'hidden', name: 'payment_amount[]', value: amount.toFixed(2) }).appendTo(posForm);
+            });
+            return hasPayment;
+        }
+
         $('#sale-type').on('change', function() {
             const isPedido = $(this).val() === 'pedido';
             $('#delivery-address-group, #delivery-fee-group').toggle(isPedido);
             $('#endereco_entrega, #taxa_entrega').prop('required', isPedido);
-            $('#singlePaymentGroup, #singleTenderedGroup').toggle(isPedido);
-            $('#multiPaymentGroup, #remainingGroup').toggle(!isPedido);
+            $('#singlePaymentGroup, #singleTenderedGroup').hide();
+            $('#multiPaymentGroup, #remainingGroup').show();
             registerDebtWrapper.toggle(!isPedido);
             if (isPedido) {
                 registerDebt.prop('checked', false);
             }
-            if (isPedido) {
-                recalcSingle();
-            } else {
-                paymentsContainer.empty();
-                addPaymentRow('DINHEIRO', updatePayable());
-                recalcMulti();
-            }
+            paymentsContainer.empty();
+            addPaymentRow('DINHEIRO', updatePayable());
+            recalcMulti();
         }).trigger('change');
 
-        $('#taxa_entrega').on('input', function() {
-            if ($('#sale-type').val() === 'pedido') {
-                recalcSingle();
-            } else {
-                recalcMulti();
-            }
-        });
-
-        $('#tendered_amount').on('input', recalcSingle);
+        $('#taxa_entrega').on('input', recalcMulti);
 
         $('#checkout-form').on('submit', function(e) {
             e.preventDefault();
@@ -245,17 +256,23 @@
             posForm.find('input[name="payment_amount[]"]').remove();
 
             if (saleType === 'pedido') {
-                const tendered = normalizeNumber($('#tendered_amount').val());
-                const due = updatePayable();
-                if (tendered < due) {
-                    alert('O valor pago é menor que o valor a pagar');
+                recalcMulti();
+                const remaining = parseFloat($('#remaining_amount').data('raw')) || 0;
+                if (remaining > 0.009) {
+                    alert('Ainda existe valor pendente para receber.');
                     return false;
                 }
+                const due = updatePayable();
                 posForm.find('[name="grand_total"]').val(due.toFixed(2));
+                const hasPayments = appendPaymentInputs();
+                if (!hasPayments) {
+                    alert('Informe ao menos uma forma de pagamento.');
+                    return false;
+                }
                 $('<input>').attr({
                     type: 'hidden',
                     name: 'forma_pagamento',
-                    value: $('#forma_pagamento').val()
+                    value: 'MULTI'
                 }).appendTo(posForm);
             } else {
                 recalcMulti();
@@ -272,15 +289,11 @@
                 }
                 const due = updatePayable();
                 posForm.find('[name="grand_total"]').val(due.toFixed(2));
-                paymentsContainer.find('.payment-row').each(function() {
-                    const method = $(this).find('.payment-method').val();
-                    const amount = normalizeNumber($(this).find('.payment-amount').val());
-                    if (!method || amount <= 0) {
-                        return;
-                    }
-                    $('<input>').attr({ type: 'hidden', name: 'payment_method[]', value: method }).appendTo(posForm);
-                    $('<input>').attr({ type: 'hidden', name: 'payment_amount[]', value: amount.toFixed(2) }).appendTo(posForm);
-                });
+                const hasPayments = appendPaymentInputs();
+                if (!hasPayments) {
+                    alert('Informe ao menos uma forma de pagamento.');
+                    return false;
+                }
                 $('<input>').attr({
                     type: 'hidden',
                     name: 'forma_pagamento',

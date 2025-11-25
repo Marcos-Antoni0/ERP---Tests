@@ -57,4 +57,4 @@ class Debt(TenantMixin):
             .get('total')
             or Decimal('0')
         )
-        return Decimal(total)
+        return Decimal(str(total))

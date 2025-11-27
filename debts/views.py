@@ -5,6 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views import View
+from django.utils.dateparse import parse_date
 
 from clients.models import Client
 from core.utils import get_user_company
@@ -21,7 +22,21 @@ class DebtListView(LoginRequiredMixin, View):
             return redirect('home-page')
 
         status_filter = request.GET.get('status', 'open')
-        base_qs = Debt.objects.filter(company=company).select_related('client')
+        start_date_raw = request.GET.get('start_date') or ''
+        end_date_raw = request.GET.get('end_date') or ''
+        start_date = parse_date(start_date_raw)
+        end_date = parse_date(end_date_raw)
+
+        date_filters = {}
+        if start_date:
+            date_filters['due_date__gte'] = start_date
+        if end_date:
+            date_filters['due_date__lte'] = end_date
+
+        base_qs = (
+            Debt.objects.filter(company=company, **date_filters)
+            .select_related('client')
+        )
         if status_filter in {Debt.Status.OPEN, Debt.Status.PAID}:
             debts = base_qs.filter(status=status_filter)
         else:
@@ -29,8 +44,16 @@ class DebtListView(LoginRequiredMixin, View):
 
         clients = Client.objects.filter(company=company).order_by('name')
         stats = {
-            'open_total': Debt.aggregate_total(company=company, status=Debt.Status.OPEN),
-            'paid_total': Debt.aggregate_total(company=company, status=Debt.Status.PAID),
+            'open_total': Debt.aggregate_total(
+                company=company,
+                status=Debt.Status.OPEN,
+                **date_filters,
+            ),
+            'paid_total': Debt.aggregate_total(
+                company=company,
+                status=Debt.Status.PAID,
+                **date_filters,
+            ),
             'count_open': base_qs.filter(status=Debt.Status.OPEN).count(),
         }
 
@@ -42,6 +65,8 @@ class DebtListView(LoginRequiredMixin, View):
                 'clients': clients,
                 'stats': stats,
                 'status_filter': status_filter,
+                'start_date': start_date_raw,
+                'end_date': end_date_raw,
                 'current': 'debts-list',
             },
         )

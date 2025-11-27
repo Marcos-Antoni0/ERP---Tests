@@ -5,6 +5,58 @@
             <label for="payable_amount" class="control-label">Valor a pagar</label>
             <input type="text" id="payable_amount" class="form-control form-control-lg rounded-0 text-end" value="{{ grand_total|intcomma }}" disabled>
         </div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-group mb-3">
+                    <label for="sale-type" class="control-label">Tipo de operação</label>
+                    <select id="sale-type" name="type" class="form-control form-control-lg rounded-0">
+                        <option value="venda" selected>Venda</option>
+                        <option value="pedido">Pedido (Delivery)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group mb-3">
+                    <label for="customer_name" class="control-label">Nome do cliente (opcional)</label>
+                    <input type="text" id="customer_name" name="customer_name" class="form-control form-control-lg rounded-0" placeholder="Insira o nome do cliente">
+                </div>
+            </div>
+        </div>
+        <div class="card mb-3 border border-warning" id="register-debt-wrapper">
+            <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-bold">Venda a prazo</span>
+                            <i class="mdi mdi-information text-primary" role="button" tabindex="0" data-bs-toggle="tooltip" data-bs-placement="top" title="Use quando o cliente deixar saldo pendente. O valor em aberto vira um débito atrelado ao cliente."></i>
+                        </div>
+                        <div class="small text-muted">Permite concluir com valor pendente e gerar débito vinculado ao cliente.</div>
+                    </div>
+                    <div class="form-check form-switch mt-1">
+                        <input class="form-check-input" type="checkbox" value="1" id="register_debt">
+                        <label class="form-check-label fw-semibold" for="register_debt">
+                            Registrar como débito
+                        </label>
+                    </div>
+                </div>
+                <div id="client-group" class="form-group mb-2">
+                    <label for="client_id" class="control-label d-flex align-items-center gap-2 mb-1">
+                        Cliente (para vincular venda/débito)
+                        <span class="badge bg-warning text-dark small fw-semibold d-none" id="client-required-badge">Obrigatório a prazo</span>
+                    </label>
+                    <select id="client_id" name="client_id" class="form-control form-control-lg rounded-0">
+                        <option value="">Selecione um cliente</option>
+                        {% for client in clients %}
+                        <option value="{{ client.id }}">{{ client.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="small text-muted">Selecione o cliente ao registrar venda a prazo.</div>
+                    <div class="alert alert-warning py-2 px-3 small mt-2 mb-0 d-none" id="debt-client-reminder">
+                        Para registrar a prazo, escolha um cliente. Caso não tenha cadastrado, cadastre-o em Clientes.
+                    </div>
+                </div>
+            </div>
+        </div>
         <div id="multiPaymentGroup" class="mb-3" style="display:none;">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <label class="control-label mb-0">Pagamentos registrados</label>
@@ -35,34 +87,6 @@
         <div class="form-group mb-3">
             <label for="payment_change" class="control-label">Troco</label>
             <input type="text" id="payment_change" class="form-control form-control-lg rounded-0 text-end" value="{{ 0|intcomma }}" disabled>
-        </div>
-        <div class="form-group mb-3">
-            <label for="sale-type" class="control-label">Tipo de operação</label>
-            <select id="sale-type" name="type" class="form-control form-control-lg rounded-0">
-                <option value="venda" selected>Venda</option>
-                <option value="pedido">Pedido (Delivery)</option>
-            </select>
-        </div>
-        <div class="form-group mb-3">
-            <label for="customer_name" class="control-label">Nome do cliente (opcional)</label>
-            <input type="text" id="customer_name" name="customer_name" class="form-control form-control-lg rounded-0" placeholder="Insira o nome do cliente">
-        </div>
-        <div class="form-group mb-3">
-            <label for="client_id" class="control-label">Cliente (para vincular venda/débito)</label>
-            <select id="client_id" name="client_id" class="form-control form-control-lg rounded-0">
-                <option value="">Selecione um cliente</option>
-                {% for client in clients %}
-                <option value="{{ client.id }}">{{ client.name }}</option>
-                {% endfor %}
-            </select>
-            <small class="text-muted">Se registrar venda a prazo, selecione o cliente.</small>
-        </div>
-        <div class="form-check mb-3" id="register-debt-wrapper">
-            <input class="form-check-input" type="checkbox" value="1" id="register_debt">
-            <label class="form-check-label" for="register_debt">
-                Registrar como débito (venda a prazo)
-            </label>
-            <div class="small text-muted">Permite concluir com valor pendente e gerar débito vinculado ao cliente.</div>
         </div>
         <div id="delivery-address-group" class="form-group mb-3" style="display:none;">
             <label for="endereco_entrega" class="control-label">Endereço (Entrega)</label>
@@ -102,6 +126,18 @@
         const registerDebt = $('#register_debt');
         const registerDebtWrapper = $('#register-debt-wrapper');
         const clientSelect = $('#client_id');
+        const clientGroup = $('#client-group');
+        const clientReminder = $('#debt-client-reminder');
+        const clientRequiredBadge = $('#client-required-badge');
+
+        const tooltipElements = document.querySelectorAll('[data-bs-toggle=\"tooltip\"]');
+        tooltipElements.forEach(function(el) {
+            if (window.bootstrap && bootstrap.Tooltip) {
+                new bootstrap.Tooltip(el);
+            } else if (typeof $(el).tooltip === 'function') {
+                $(el).tooltip();
+            }
+        });
 
         if (clientSelect.length) {
             clientSelect.select2({
@@ -141,6 +177,19 @@
             return number < 0 ? `-${formatted}` : formatted;
         }
 
+        function updateClientRequirement() {
+            const isPedido = $('#sale-type').val() === 'pedido';
+            const needsClient = registerDebt.is(':checked') && !isPedido;
+            clientSelect.prop('required', needsClient);
+            clientGroup.toggleClass('border border-warning rounded-3 shadow-sm', needsClient);
+            clientRequiredBadge.toggleClass('d-none', !needsClient);
+            if (needsClient && !clientSelect.val()) {
+                clientReminder.removeClass('d-none');
+            } else {
+                clientReminder.addClass('d-none');
+            }
+        }
+
         function updatePayable() {
             let due = originalPayable;
             if ($('#sale-type').val() === 'pedido') {
@@ -155,7 +204,8 @@
 
         function ensurePaymentRows() {
             if (paymentsContainer.children('.payment-row').length === 0) {
-                addPaymentRow('DINHEIRO', updatePayable());
+                const defaultAmount = registerDebt.is(':checked') ? 0 : updatePayable();
+                addPaymentRow('DINHEIRO', defaultAmount);
             }
         }
 
@@ -178,8 +228,9 @@
         function addPaymentRow(method, amount) {
             const template = $('#paymentRowTemplate .payment-row').first().clone();
             template.find('.payment-method').val(method || 'PIX');
-            if (amount !== undefined) {
-                template.find('.payment-amount').val((Number(amount) || 0).toFixed(2));
+            const startingAmount = amount !== undefined ? amount : (registerDebt.is(':checked') ? 0 : undefined);
+            if (startingAmount !== undefined) {
+                template.find('.payment-amount').val((Number(startingAmount) || 0).toFixed(2));
             }
             template.find('.payment-method').on('change', recalcMulti);
             template.find('.payment-amount').on('input', recalcMulti);
@@ -228,11 +279,35 @@
                 registerDebt.prop('checked', false);
             }
             paymentsContainer.empty();
-            addPaymentRow('DINHEIRO', updatePayable());
+            const defaultAmount = isPedido ? updatePayable() : (registerDebt.is(':checked') ? 0 : updatePayable());
+            addPaymentRow('DINHEIRO', defaultAmount);
             recalcMulti();
+            updateClientRequirement();
         }).trigger('change');
 
+        registerDebt.on('change', function() {
+            if ($(this).is(':checked')) {
+                paymentsContainer.find('.payment-amount').val('0.00');
+                clientSelect.trigger('focus');
+            } else {
+                const due = updatePayable();
+                const rows = paymentsContainer.find('.payment-row');
+                const hasPositiveAmount = rows.toArray().some(function(row) {
+                    const value = normalizeNumber($(row).find('.payment-amount').val());
+                    return value > 0;
+                });
+                if (!hasPositiveAmount && rows.length) {
+                    $(rows[0]).find('.payment-amount').val(due.toFixed(2));
+                }
+            }
+            recalcMulti();
+            updateClientRequirement();
+        });
+
+        clientSelect.on('change', updateClientRequirement);
         $('#taxa_entrega').on('input', recalcMulti);
+
+        updateClientRequirement();
 
         $('#checkout-form').on('submit', function(e) {
             e.preventDefault();
@@ -265,7 +340,7 @@
                 const due = updatePayable();
                 posForm.find('[name="grand_total"]').val(due.toFixed(2));
                 const hasPayments = appendPaymentInputs();
-                if (!hasPayments) {
+                if (!hasPayments && !shouldRegisterDebt) {
                     alert('Informe ao menos uma forma de pagamento.');
                     return false;
                 }
@@ -277,20 +352,19 @@
             } else {
                 recalcMulti();
                 const remaining = parseFloat($('#remaining_amount').data('raw')) || 0;
-                if (remaining > 0.009) {
-                    if (!shouldRegisterDebt) {
-                        alert('Ainda existe valor pendente para receber.');
-                        return false;
-                    }
-                    if (!clientSelect.val()) {
-                        alert('Selecione um cliente para registrar o débito.');
-                        return false;
-                    }
+                if (shouldRegisterDebt && !clientSelect.val()) {
+                    updateClientRequirement();
+                    alert('Selecione um cliente para registrar o débito.');
+                    return false;
+                }
+                if (remaining > 0.009 && !shouldRegisterDebt) {
+                    alert('Ainda existe valor pendente para receber.');
+                    return false;
                 }
                 const due = updatePayable();
                 posForm.find('[name="grand_total"]').val(due.toFixed(2));
                 const hasPayments = appendPaymentInputs();
-                if (!hasPayments) {
+                if (!hasPayments && !shouldRegisterDebt) {
                     alert('Informe ao menos uma forma de pagamento.');
                     return false;
                 }

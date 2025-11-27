@@ -106,9 +106,18 @@ class ProductsAdmin(TenantModelAdmin):
 
 
 class SalesAdmin(TenantModelAdmin):
-    list_display = ['code', 'customer_name', 'grand_total',
-                    'forma_pagamento', 'type', 'status', 'company', 'date_added']
-    list_filter = ['forma_pagamento', 'type',
+    list_display = [
+        'code',
+        'customer_name',
+        'grand_total',
+        'forma_pagamento',
+        'venda_a_prazo',
+        'type',
+        'status',
+        'company',
+        'date_added',
+    ]
+    list_filter = ['forma_pagamento', 'venda_a_prazo', 'type',
                    'status', 'company', 'date_added']
     search_fields = ['code', 'customer_name']
 

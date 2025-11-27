@@ -41,6 +41,14 @@
       <h5>Receita Total (R$)</h5>
       <h2>{{ totals.total_revenue|floatformat:2|intcomma }}</h2>
     </div>
+    <div class="card flex-fill text-white bg-secondary p-3">
+      <h5>Custos (R$)</h5>
+      <h2>{{ totals.total_cost|floatformat:2|intcomma }}</h2>
+    </div>
+    <div class="card flex-fill text-white bg-success p-3">
+      <h5>Lucro (R$)</h5>
+      <h2>{{ totals.total_profit|floatformat:2|intcomma }}</h2>
+    </div>
     <div class="card flex-fill text-white bg-warning p-3">
       <h5>Transações</h5>
       <h2>{{ totals.total_tx }}</h2>
@@ -56,6 +64,30 @@
     <div class="card flex-fill text-white bg-danger p-3">
       <h5>Saídas de Caixa (R$)</h5>
       <h2>{{ totals.total_cash_exits|floatformat:2|intcomma }}</h2>
+    </div>
+    <div class="card flex-fill text-white {% if debt_cards.pending.overdue > 0 %}bg-danger{% else %}bg-info{% endif %} p-3">
+      <h5>Débitos Pendentes</h5>
+      <h2>R$ {{ debt_cards.pending.total|floatformat:2|intcomma }}</h2>
+      <p class="mb-1">{{ debt_cards.pending.clients|intcomma }} cliente(s) com débito.</p>
+      {% if debt_cards.pending.overdue > 0 %}
+      <span class="badge bg-warning text-dark">Vencidos: {{ debt_cards.pending.overdue }}</span>
+      {% endif %}
+      <div class="mt-2">
+        <a href="{% url 'debts-list' %}" class="btn btn-sm btn-outline-light">Ver débitos</a>
+      </div>
+    </div>
+    <div class="card flex-fill text-white bg-success p-3">
+      <h5>Débitos Pagos (período)</h5>
+      <h2>R$ {{ debt_cards.paid.total|floatformat:2|intcomma }}</h2>
+      <p class="mb-1">{{ debt_cards.paid.count|intcomma }} baixa(s) registrada(s).</p>
+      <div class="mt-2">
+        <a href="{% url 'debts-list' %}?status=paid&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-sm btn-outline-light">Ver pagos</a>
+      </div>
+    </div>
+    <div class="card flex-fill text-white bg-primary p-3">
+      <h5>Débitos Pag + Lucro</h5>
+      <h2>R$ {{ debt_cards.paid_plus_profit|floatformat:2|intcomma }}</h2>
+      <p class="mb-1">Soma dos débitos pagos no período com o lucro do período.</p>
     </div>
   </div>
 </div>

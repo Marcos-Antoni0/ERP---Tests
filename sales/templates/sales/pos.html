@@ -713,10 +713,25 @@
                         
                         // Mensagem de sucesso baseada no tipo de operação
                         var successMsg = '';
+                        var extraMsg = '';
                         if (resp.type == 'pedido') {
                             successMsg = 'Pedido registrado com sucesso!';
                         } else {
                             successMsg = 'Venda finalizada com sucesso!';
+                        }
+                        if (resp.register_debt) {
+                            var amountDisplay = '';
+                            if (resp.debt_amount) {
+                                var parsedAmount = parseFloat(resp.debt_amount);
+                                if (!isNaN(parsedAmount)) {
+                                    amountDisplay = parsedAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                }
+                            }
+                            if (resp.debt_created && amountDisplay) {
+                                extraMsg = 'Débito gerado para o cliente no valor de R$ ' + amountDisplay + '.';
+                            } else {
+                                extraMsg = 'Venda a prazo registrada e vinculada ao cliente.';
+                            }
                         }
                         if (resp.receipt_url) {
                             const popup = window.open(resp.receipt_url, '_blank', 'width=420,height=680,menubar=no,toolbar=no');
@@ -730,6 +745,9 @@
                         }
                         
                         el.text(successMsg)
+                        if (extraMsg) {
+                            $('<div class="mt-1 small fw-semibold"></div>').text(extraMsg).appendTo(el);
+                        }
                         _this.prepend(el)
                         el.show('slow')
                         

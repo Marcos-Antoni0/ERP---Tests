@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db import transaction
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Q, Sum, F
 from django.db.models.functions import TruncDate
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -37,6 +37,7 @@ from p_v_App.models import (
     TableOrder,
     salesItems,
 )
+from debts.models import Debt
 from clients.models import Client
 from debts.models import Debt
 from sales.forms import CashCloseForm, CashMovementForm, CashOpenForm
@@ -492,11 +493,11 @@ def save_pos(request):
     try:
         payment_methods = data.getlist('payment_method[]')
         payment_amounts = data.getlist('payment_amount[]')
-        if not payment_methods:
+        if not payment_methods and not payment_amounts:
             payment_methods = [data.get('forma_pagamento', 'PIX')]
             fallback_amount = data.get('tendered_amount', None)
             if fallback_amount in (None, ''):
-                fallback_amount = str(grand_total_value)
+                fallback_amount = '0' if register_debt else str(grand_total_value)
             payment_amounts = [fallback_amount]
 
         has_positive_payment = False
@@ -513,11 +514,7 @@ def save_pos(request):
             allocations = []
             tendered_total = Decimal('0')
             change_total = Decimal('0')
-            primary_method = (
-                payment_methods[0]
-                if payment_methods and payment_methods[0] in VALID_PAYMENT_METHODS
-                else 'PIX'
-            )
+            primary_method = 'MULTI'
         else:
             try:
                 payment_entries = parse_payment_entries(
@@ -531,6 +528,8 @@ def save_pos(request):
                 resp['msg'] = str(exc)
                 return JsonResponse(resp)
 
+        debt_created = False
+        debt_amount = Decimal('0')
         with transaction.atomic():
             venda = Sales.objects.create(
                 code=code,
@@ -548,6 +547,7 @@ def save_pos(request):
                 discount_total=float(discount_value),
                 discount_reason=discount_reason,
                 type='venda',
+                venda_a_prazo=register_debt,
                 company=user_company,
             )
 
@@ -587,10 +587,6 @@ def save_pos(request):
                                 produto=component['component'],
                                 company=user_company,
                             )
-                            if estoque_item.quantidade < float(component['total_quantity']):
-                                raise ValueError(
-                                    f"Estoque insuficiente para o item {component['component'].name}."
-                                )
                             estoque_item.quantidade -= float(
                                 component['total_quantity'])
                             estoque_item.save(update_fields=['quantidade'])
@@ -601,10 +597,6 @@ def save_pos(request):
                         estoque_item = Estoque.objects.get(
                             produto=product, company=user_company
                         )
-                        if estoque_item.quantidade < float(qty_decimal):
-                            raise ValueError(
-                                f'Estoque insuficiente para o item {product.name}.'
-                            )
                         estoque_item.quantidade -= float(qty_decimal)
                         estoque_item.save(update_fields=['quantidade'])
                     except Estoque.DoesNotExist:
@@ -613,20 +605,42 @@ def save_pos(request):
             register_sale_payments(venda, allocations, request.user)
 
             paid_total = sum(
-                (allocation.get('applied') or Decimal('0'))
-                for allocation in allocations
+                (
+                    allocation.get('applied') or Decimal('0')
+                    for allocation in allocations
+                ),
+                start=Decimal('0'),
             )
-            remaining_due = grand_total_value - paid_total
+            try:
+                grand_total_dec = (
+                    grand_total_value if isinstance(
+                        grand_total_value, Decimal) else Decimal(str(grand_total_value))
+                )
+                paid_total_dec = (
+                    paid_total if isinstance(paid_total, Decimal) else Decimal(str(paid_total))
+                )
+            except (InvalidOperation, ValueError, TypeError):
+                raise ValueError('NÇœo foi possÇðvel calcular o saldo a prazo.')
+
+            remaining_due = (grand_total_dec - paid_total_dec).quantize(Decimal('0.01'))
             if remaining_due < Decimal('0'):
                 remaining_due = Decimal('0')
             if register_debt and remaining_due > Decimal('0.009'):
+                total_display = grand_total_dec.quantize(Decimal('0.01'))
+                paid_display = paid_total_dec.quantize(Decimal('0.01'))
                 Debt.objects.create(
                     company=user_company,
                     client=client,
+                    sale=venda,
                     amount=remaining_due,
-                    description=f'Venda #{venda.code} - pendência de pagamento',
+                    description=(
+                        f'Venda #{venda.code} - pendência de pagamento. '
+                        f'Total: R$ {total_display}; pago: R$ {paid_display}; saldo: R$ {remaining_due}.'
+                    ),
                     status=Debt.Status.OPEN,
                 )
+                debt_created = True
+                debt_amount = remaining_due
             try:
                 print_status, print_message = trigger_auto_print(venda)
             except Exception as print_exc:  # noqa: BLE001
@@ -639,6 +653,9 @@ def save_pos(request):
                 'receipt_url': reverse('receipt-modal') + f'?id={venda.id}&auto_print=1',
                 'print_status': 'success' if print_status else 'skipped',
                 'print_message': print_message,
+                'register_debt': register_debt,
+                'debt_created': debt_created,
+                'debt_amount': str(debt_amount.quantize(Decimal('0.01'))) if debt_amount else '0.00',
             }
     except Exception as exc:
         resp['msg'] = f'Erro ao processar venda: {exc}'
@@ -1142,7 +1159,6 @@ def sales_report(request):
         sale_id__date_added__date__gte=start,
         sale_id__date_added__date__lte=end,
     )
-
     sales_qs = Sales.objects.filter(
         (Q(type__in=['venda', 'pedido']) | Q(type__istartswith='Mesa')),
         company=user_company,
@@ -1165,14 +1181,21 @@ def sales_report(request):
         total_discount=Sum('discount_total'),
         total_delivery=Sum('delivery_fee'),
     )
+    items_cost_agg = items_qs.aggregate(
+        total_cost=Sum(F('qty') * F('product_id__custo'))
+    )
+    total_revenue_dec = Decimal(str(sales_aggregates.get('total_revenue') or 0))
+    total_cost_dec = Decimal(str(items_cost_agg.get('total_cost') or 0))
     totals = {
         'total_tx': sales_qs.count(),
-        'total_revenue': float(sales_aggregates.get('total_revenue') or 0),
+        'total_revenue': float(total_revenue_dec),
         'total_quantity': items_qs.aggregate(total_quantity=Sum('qty'))['total_quantity'] or 0,
         'total_discount': float(sales_aggregates.get('total_discount') or 0),
         'total_delivery_fee': float(sales_aggregates.get('total_delivery') or 0),
         'total_tax': float(sales_aggregates.get('total_tax') or 0),
         'total_cash_exits': float(cash_exits_agg.get('total') or 0),
+        'total_cost': float(total_cost_dec),
+        'total_profit': float(total_revenue_dec - total_cost_dec),
     }
     totals['total_average_ticket'] = (
         totals['total_revenue'] /
@@ -1215,6 +1238,52 @@ def sales_report(request):
         .order_by('-sale_date', 'forma_pagamento')
     )
 
+    debt_pending_qs = Debt.objects.filter(
+        company=user_company,
+        status=Debt.Status.OPEN,
+        created_at__date__gte=start,
+        created_at__date__lte=end,
+    )
+    debt_paid_qs = Debt.objects.filter(
+        company=user_company,
+        status=Debt.Status.PAID,
+        paid_at__date__gte=start,
+        paid_at__date__lte=end,
+    )
+    debt_cards = {
+        'pending': {
+            'total': float(
+                Debt.aggregate_total(
+                    company=user_company,
+                    status=Debt.Status.OPEN,
+                    created_at__date__gte=start,
+                    created_at__date__lte=end,
+                )
+            ),
+            'clients': (
+                debt_pending_qs.exclude(client__isnull=True)
+                .values('client_id')
+                .distinct()
+                .count()
+            ),
+            'overdue': debt_pending_qs.filter(due_date__lt=timezone.localdate()).count(),
+        },
+        'paid': {
+            'total': float(
+                Debt.aggregate_total(
+                    company=user_company,
+                    status=Debt.Status.PAID,
+                    paid_at__date__gte=start,
+                    paid_at__date__lte=end,
+                )
+            ),
+            'count': debt_paid_qs.count(),
+        },
+    }
+    debt_cards['paid_plus_profit'] = float(
+        Decimal(str(debt_cards['paid']['total'])) + Decimal(str(totals['total_profit']))
+    )
+
     context = {
         'page_title': 'Relatório de Vendas por Produto',
         'start_date': start.strftime('%Y-%m-%d'),
@@ -1224,6 +1293,7 @@ def sales_report(request):
         'current': 'sales_report',
         'payment_summary': payment_summary,
         'payment_by_day': payment_by_day,
+        'debt_cards': debt_cards,
     }
     return render(request, 'sales/sales_report.html', context)
 

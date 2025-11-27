@@ -91,21 +91,19 @@
           <table class="table table-sm align-middle">
             <thead>
               <tr>
+                <th>Status</th>
                 <th>Cliente</th>
-                <th>Descrição</th>
+                <th>Registrado em</th>
                 <th>Valor</th>
                 <th>Vencimento</th>
-                <th>Status</th>
+                <th>Venda</th>
+                <th>Descrição</th>
                 <th class="text-end">Ações</th>
               </tr>
             </thead>
             <tbody>
               {% for debt in debts %}
               <tr>
-                <td>{{ debt.client.name }}</td>
-                <td class="small">{{ debt.description|default:"-" }}</td>
-                <td>R$ {{ debt.amount|floatformat:2 }}</td>
-                <td>{{ debt.due_date|date:"d/m/Y"|default:"-" }}</td>
                 <td>
                   {% if debt.status == 'open' %}
                     <span class="badge bg-warning text-dark">Em aberto</span>
@@ -113,6 +111,19 @@
                     <span class="badge bg-success">Pago</span>
                   {% endif %}
                 </td>
+                <td>{{ debt.client.name }}</td>
+                <td>{{ debt.created_at|date:"d/m/Y H:i" }}</td>
+                <td>R$ {{ debt.amount|floatformat:2 }}</td>
+                <td>{{ debt.due_date|date:"d/m/Y"|default:"-" }}</td>
+                <td>
+                  {% if debt.sale %}
+                    <div class="fw-bold">#{{ debt.sale.code }}</div>
+                    <div class="text-muted small">{{ debt.sale.date_added|date:"d/m/Y H:i" }}</div>
+                  {% else %}
+                    <span class="text-muted">-</span>
+                  {% endif %}
+                </td>
+                <td class="small">{{ debt.description|default:"-" }}</td>
                 <td class="text-end">
                   <div class="btn-group btn-group-sm" role="group">
                     <button
@@ -148,7 +159,7 @@
               </tr>
               {% empty %}
               <tr>
-                <td colspan="6" class="text-center text-muted">Nenhum débito encontrado.</td>
+                <td colspan="8" class="text-center text-muted">Nenhum débito encontrado.</td>
               </tr>
               {% endfor %}
             </tbody>

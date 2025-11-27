@@ -169,6 +169,10 @@ class Sales(TenantMixin):
         default='pendente',
         help_text='Só relevante se type="pedido"'
     )
+    venda_a_prazo = models.BooleanField(
+        default=False,
+        help_text='Indica se a venda foi concluída com saldo a receber (débito).',
+    )
 
     date_added = models.DateTimeField(default=timezone.now)
     date_updated = models.DateTimeField(auto_now=True)

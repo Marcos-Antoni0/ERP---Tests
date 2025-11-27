@@ -5,6 +5,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from p_v_App.models_tenant import TenantMixin, TenantManager
+from p_v_App.models import Sales
 
 
 class Debt(TenantMixin):
@@ -16,6 +17,14 @@ class Debt(TenantMixin):
         'clients.Client',
         related_name='debts',
         on_delete=models.CASCADE,
+    )
+    sale = models.ForeignKey(
+        Sales,
+        related_name='linked_debts',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text='Venda de origem para rastreabilidade do débito.',
     )
     description = models.CharField('Descrição', max_length=255, blank=True)
     amount = models.DecimalField('Valor', max_digits=10, decimal_places=2)

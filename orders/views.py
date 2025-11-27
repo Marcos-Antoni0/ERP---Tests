@@ -173,10 +173,6 @@ def finalizar_pedido(request, pedido_id):
                                 produto=combo.component,
                                 company=user_company,
                             )
-                            if estoque_item.quantidade < float(combo.quantity):
-                                raise ValueError(
-                                    f'Estoque insuficiente para o item {combo.component.name}.'
-                                )
                             estoque_item.quantidade -= float(combo.quantity)
                             estoque_item.save(update_fields=['quantidade'])
                         except Estoque.DoesNotExist:
@@ -185,10 +181,6 @@ def finalizar_pedido(request, pedido_id):
                     try:
                         estoque_item = Estoque.objects.get(
                             produto=item.product, company=user_company)
-                        if estoque_item.quantidade < float(item.qty):
-                            raise ValueError(
-                                f'Estoque insuficiente para o item {item.product.name}.'
-                            )
                         estoque_item.quantidade -= item.qty
                         estoque_item.save(update_fields=['quantidade'])
                     except Estoque.DoesNotExist:

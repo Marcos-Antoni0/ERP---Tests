@@ -10,6 +10,7 @@ from django.views.generic import TemplateView
 from core.forms import ConfiguracaoSistemaForm
 from core.utils import get_user_company
 from p_v_App.models import Category, Products, Sales
+from debts.models import Debt
 
 
 @login_required
@@ -22,10 +23,23 @@ def home(request):
         products = Products.objects.filter(company=user_company).count()
         today_sales = Sales.objects.filter(
             date_added__date=today, company=user_company)
+        debts_qs = Debt.objects.filter(company=user_company, status=Debt.Status.OPEN)
+        debt_total_pending = Debt.aggregate_total(
+            company=user_company, status=Debt.Status.OPEN)
+        debt_clients_with_pending = (
+            debts_qs.exclude(client__isnull=True)
+            .values('client_id')
+            .distinct()
+            .count()
+        )
+        debt_overdue = debts_qs.filter(due_date__lt=today).count()
     else:
         categories = 0
         products = 0
         today_sales = Sales.objects.none()
+        debt_total_pending = 0
+        debt_clients_with_pending = 0
+        debt_overdue = 0
 
     context = {
         'page_title': 'Início',
@@ -33,6 +47,9 @@ def home(request):
         'products': products,
         'transaction': today_sales.count(),
         'total_sales': today_sales.aggregate(total=Sum('grand_total'))['total'] or 0,
+        'debt_total_pending': debt_total_pending,
+        'debt_clients_with_pending': debt_clients_with_pending,
+        'debt_overdue': debt_overdue,
     }
     return render(request, 'core/home.html', context)
 

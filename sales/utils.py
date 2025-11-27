@@ -19,6 +19,7 @@ from p_v_App.models import (
     Sales,
     salesItems,
 )
+from debts.models import Debt
 
 CENTS = Decimal('0.01')
 VALID_PAYMENT_METHODS = {
@@ -489,6 +490,53 @@ def generate_cash_report_pdf(session: CashRegisterSession) -> bytes:
     difference = quantize_currency(
         session.closing_amount) - session.expected_balance()
     add_line(f'Diferenca apurada: {_format_currency(difference)}')
+
+    period_start = session.opened_at
+    period_end = session.closed_at or timezone.now()
+    period_sales = Sales.objects.filter(
+        company=session.company,
+        date_added__gte=period_start,
+        date_added__lte=period_end,
+    )
+    total_vendido = (
+        period_sales.aggregate(total=Sum('grand_total')).get('total')
+        or Decimal('0')
+    )
+    total_apurado = (
+        SalePayment.objects.filter(sale_id__in=period_sales.values('id'))
+        .aggregate(total=Sum('applied_amount'))
+        .get('total')
+        or Decimal('0')
+    )
+    prazo_debts = Debt.objects.filter(
+        company=session.company,
+        sale_id__in=period_sales.values('id'),
+    ).select_related('client', 'sale')
+    total_prazo = (
+        prazo_debts.filter(status=Debt.Status.OPEN)
+        .aggregate(total=Sum('amount'))
+        .get('total')
+        or Decimal('0')
+    )
+
+    add_line()
+    add_line('Vendas a Prazo')
+    add_line(f'Total vendido (incl. a prazo): {_format_currency(total_vendido)}')
+    add_line(f'Total apurado (recebido): {_format_currency(total_apurado)}')
+    add_line(f'Vendas a prazo (em debito): {_format_currency(total_prazo)}')
+
+    if prazo_debts.exists():
+        add_line('Detalhamento de vendas a prazo')
+        for debt in prazo_debts.order_by('-created_at'):
+            sale = getattr(debt, 'sale', None)
+            sale_label = f"#{sale.code}" if sale else 'N/I'
+            sale_date = sale.date_added.strftime(
+                '%d/%m/%Y %H:%M') if sale else '-'
+            client_name = debt.client.name if debt.client_id else 'Cliente não informado'
+            status_label = dict(Debt.Status.choices).get(debt.status, debt.status)
+            add_line(
+                f"- {client_name} | {sale_label} | {sale_date} | Valor: {_format_currency(debt.amount)} | Status: {status_label}"
+            )
 
     sale_ids = list(
         session.movements.filter(sale__isnull=False).values_list(

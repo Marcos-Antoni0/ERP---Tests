@@ -35,7 +35,7 @@ class DebtListView(LoginRequiredMixin, View):
 
         base_qs = (
             Debt.objects.filter(company=company, **date_filters)
-            .select_related('client')
+            .select_related('client', 'sale')
         )
         if status_filter in {Debt.Status.OPEN, Debt.Status.PAID}:
             debts = base_qs.filter(status=status_filter)

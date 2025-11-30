@@ -213,6 +213,9 @@ def save_pos(request):
         resp['msg'] = 'Usuário não está associado a nenhuma empresa.'
         return JsonResponse(resp)
 
+    auto_open_print = getattr(user_company, 'auto_open_print', True)
+    auto_print_flag = '1' if auto_open_print else '0'
+
     if not get_open_cash_session(user_company):
         resp['msg'] = 'Abra o caixa para registrar vendas no PDV.'
         return JsonResponse(resp)
@@ -482,7 +485,7 @@ def save_pos(request):
                     'status': 'success',
                     'sale_id': pedido.id,
                     'type': 'pedido',
-                    'receipt_url': reverse('receipt-modal') + f'?id={pedido.id}&auto_print=1',
+                    'receipt_url': reverse('receipt-modal') + f'?id={pedido.id}&auto_print={auto_print_flag}',
                     'print_status': 'success' if print_status else 'skipped',
                     'print_message': print_message,
                 }
@@ -650,7 +653,7 @@ def save_pos(request):
                 'status': 'success',
                 'sale_id': venda.id,
                 'type': 'venda',
-                'receipt_url': reverse('receipt-modal') + f'?id={venda.id}&auto_print=1',
+                'receipt_url': reverse('receipt-modal') + f'?id={venda.id}&auto_print={auto_print_flag}',
                 'print_status': 'success' if print_status else 'skipped',
                 'print_message': print_message,
                 'register_debt': register_debt,

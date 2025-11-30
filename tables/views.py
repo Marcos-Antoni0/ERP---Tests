@@ -418,7 +418,8 @@ def fechar_comanda(request, order_id):
             table.waiter = None
             table.save(update_fields=['waiter'])
 
-        receipt_url = reverse('receipt-modal') + f'?id={sale.id}&auto_print=1'
+        auto_print_flag = '1' if getattr(user_company, 'auto_open_print', True) else '0'
+        receipt_url = reverse('receipt-modal') + f'?id={sale.id}&auto_print={auto_print_flag}'
         try:
             print_status, print_message = trigger_auto_print(sale)
         except Exception as exc:  # noqa: BLE001

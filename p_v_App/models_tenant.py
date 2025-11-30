@@ -26,6 +26,11 @@ class Company(models.Model):
         blank=True,
         help_text='Nome ou caminho da impressora padrão deste tenant.',
     )
+    auto_open_print = models.BooleanField(
+        'Abrir tela de impressão após finalizar',
+        default=True,
+        help_text='Quando marcado, a tela de impressão abre automaticamente após concluir uma venda ou pedido.',
+    )
 
     class Meta:
         verbose_name = 'Empresa'

@@ -13,7 +13,7 @@ class ConfiguracaoSistemaForm(forms.ModelForm):
 
     class Meta:
         model = Company
-        fields = ['default_printer']
+        fields = ['default_printer', 'auto_open_print']
         widgets = {
             'default_printer': forms.TextInput(
                 attrs={
@@ -21,8 +21,17 @@ class ConfiguracaoSistemaForm(forms.ModelForm):
                     'placeholder': 'Ex.: EPSON_TM-T20, PDF, Microsoft Print to PDF',
                 }
             ),
+            'auto_open_print': forms.CheckboxInput(
+                attrs={
+                    'class': 'form-check-input',
+                }
+            ),
         }
-        labels = {'default_printer': 'Impressora padrão'}
+        labels = {
+            'default_printer': 'Impressora padrão',
+            'auto_open_print': 'Abrir tela de impressão automaticamente',
+        }
         help_texts = {
             'default_printer': 'Será usada como destino padrão para impressões automáticas.',
+            'auto_open_print': 'Quando ativo, abrirá a tela de impressão ao finalizar vendas/pedidos.',
         }

@@ -62,12 +62,19 @@ def print_sale_receipt_to_printer(sale: Sales, *, printer_name: str | None = Non
         for payment in sale.payments.all().order_by('recorded_at')
     ]
 
+    table_number = None
+    try:
+        table_number = getattr(getattr(sale, 'table', None), 'number', None)
+    except Exception:
+        table_number = None
+
     payload = _build_receipt_payload(
         header_label='Venda',
         code=sale.code,
         company_name=getattr(sale.company, 'name', 'Empresa'),
         company_cnpj=getattr(sale.company, 'cnpj', ''),
         created_at=sale.date_added,
+        table_number=table_number,
         items=items,
         delivery_fee=sale.delivery_fee or 0,
         discount_total=sale.discount_total or 0,
@@ -128,6 +135,7 @@ def _build_receipt_payload(
     company_name: str,
     company_cnpj: str | None,
     created_at,
+    table_number=None,
     items: list[dict],
     delivery_fee,
     discount_total,
@@ -146,6 +154,8 @@ def _build_receipt_payload(
         except Exception:
             display_dt = created_at
         lines.append(f'Data: {display_dt:%d/%m/%Y %H:%M}')
+    if table_number:
+        lines.append(f'Mesa: {table_number}')
     lines.append('-' * 32)
 
     total_itens = Decimal('0')

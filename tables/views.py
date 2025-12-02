@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Prefetch
+from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -191,9 +192,23 @@ def excluir_mesa(request, table_id):
     if table.orders.filter(status=TableOrder.Status.OPEN).exists():
         messages.error(
             request, 'Não é possível excluir uma mesa com comanda aberta.')
+    elif table.orders.exists():
+        orders_count = table.orders.count()
+        messages.error(
+            request,
+            f'Não é possível excluir a mesa: existem {orders_count} comandas vinculadas. '
+            'Remova ou arquive as comandas antes de excluir a mesa.',
+        )
     else:
-        table.delete()
-        messages.success(request, 'Mesa removida com sucesso.')
+        try:
+            table.delete()
+            messages.success(request, 'Mesa removida com sucesso.')
+        except ProtectedError:
+            messages.error(
+                request,
+                'Não é possível excluir a mesa porque há registros vinculados. '
+                'Remova as dependências antes de prosseguir.',
+            )
 
     redirect_target = request.POST.get('next') or reverse('mesas')
     return redirect(redirect_target)
@@ -211,7 +226,7 @@ def mesa_detalhe(request, table_id):
     if guard is not True:
         return guard
 
-    table = get_object_or_404(
+    table = (
         Table.objects.filter(company=user_company)
         .select_related('waiter')
         .prefetch_related(
@@ -228,9 +243,14 @@ def mesa_detalhe(request, table_id):
                 )
                 .order_by('-opened_at'),
             )
-        ),
-        pk=table_id,
+        )
+        .filter(pk=table_id)
+        .first()
     )
+    if not table:
+        messages.error(
+            request, 'Mesa não encontrada ou já removida. Atualize a lista de mesas.')
+        return redirect('mesas')
 
     cash_session_open = bool(get_open_cash_session(user_company))
 

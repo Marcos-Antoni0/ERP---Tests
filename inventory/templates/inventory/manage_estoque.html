@@ -1,0 +1,126 @@
+<div class="container-fluid">
+    <form action="" id="product-form">
+        <input type="hidden" name="id" value="{% if product.pk %}{{product.pk}}{% endif %}">
+
+        <div class="form-group mb-3">
+            <label for="categoria_id" class="control-label">Categoria</label>
+            <select name="categoria_id" id="categoria_id" class="form-select form-select-sm" required>
+            <option value="" disabled {% if not product %}selected{% endif %}>Selecione...</option>
+            {% for cat in categories %}
+            <option value="{{ cat.id }}"
+                    {% if product and product.categoria_id == cat.id %}selected{% endif %}>
+                {{ cat.name }}
+            </option>
+            {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group mb-3">
+        <label for="produto_id" class="control-label">Produto</label>
+        <select name="produto_id" id="produto_id" class="form-select form-select-sm" required>
+        <option value="" disabled {% if not product %}selected{% endif %}>Selecione...</option>
+            {% for prod in products %}
+                <option 
+                value="{{ prod.id }}"
+                data-preco="{{ prod.price }}"
+                data-custo="{{ prod.custo }}"
+                {% if product and product.produto_id == prod.id %}selected{% endif %}>
+                {{ prod.name }}
+                </option>
+            {% endfor %}
+        </select>
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="preco" class="control-label">Preço</label>
+            <input type="text" name="preco" id="preco" class="form-control form-control-sm rounded-0" value="{% if product.preco %}{{product.preco}}{% endif %}" required>
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="custo" class="control-label">Custo</label>
+            <input type="text" name="custo" id="custo" class="form-control form-control-sm rounded-0" value="{% if product.custo %}{{product.custo}}{% endif %}" required>
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="quantidade" class="control-label">Qtd Estoque</label>
+            <input type="text" name="quantidade" id="quantidade" class="form-control form-control-sm rounded-0" value="{% if product.quantidade %}{{product.quantidade}}{% endif %}" required>
+        </div>
+
+        
+        <div class="form-group mb-3">
+            <label for="status" class="control-label">Situação</label>
+            <select name="status" id="status" class="form-select form-select-sm rounded-0" required>
+                <option value="1" {% if product and product.status == 1 %}selected{% endif %}>
+                    Ativo
+                </option>
+                <option value="0" {% if product and product.status == 0 %}selected{% endif %}>
+                    Inativo
+                </option>
+            </select>
+        </div>
+    </form>
+</div>
+<script>
+    $(function() {
+        $('#product-form').submit(function(e) {
+            e.preventDefault();
+            var _this = $(this)
+            $('.err-msg').remove();
+            var el = $('<div>')
+            el.addClass("alert alert-danger err-msg")
+            el.hide()
+            if (_this[0].checkValidity() == false) {
+                _this[0].reportValidity();
+                return false;
+            }
+            start_loader();
+            $.ajax({
+                headers: {
+                    "X-CSRFToken": '{{csrf_token}}'
+                },
+                url: "{% url 'save-product-estoque-page' %}",
+                data: new FormData($(this)[0]),
+                cache: false,
+                contentType: false,
+                processData: false,
+                method: 'POST',
+                type: 'POST',
+                dataType: 'json',
+                error: err => {
+                    console.log(err)
+                    end_loader();
+                },
+                success: function(resp) {
+                    if (typeof resp == 'object' && resp.status == 'success') {
+                        el.removeClass("alert alert-danger err-msg")
+                        location.reload()
+                    } else if (resp.status == 'failed' && !!resp.msg) {
+                        el.text(resp.msg)
+                    } else {
+                        el.text("Ocorreu um erro", 'error');
+                        end_loader();
+                        console.err(resp)
+                    }
+                    _this.prepend(el)
+                    el.show('slow')
+                    $("html, body, .modal").scrollTop(0);
+                    end_loader()
+                }
+            })
+        })
+    })
+    $(function(){
+    // quando o modal abrir, ou após montar a lista:
+    $('#produto_id').on('change', function(){
+      const selecionado = $(this).find(':selected');
+      // preenche valores
+      $('#preco').val(selecionado.data('preco'));
+      $('#custo').val(selecionado.data('custo'));
+    });
+
+    // opcional: dispara ao abrir, se já tiver produto selecionado
+    $('#uni_modal').on('shown.bs.modal', function(){
+      $('#produto_id').trigger('change');
+    });
+  });
+</script>

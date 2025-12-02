@@ -1,0 +1,183 @@
+html,
+body {
+    height: 100%;
+    width: 100%;
+    background: #ffffff;
+    color: #0b1727;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.loader-wrapper {
+    background: #e9eaefa6 !important;
+}
+
+.mid-large {
+    width: 54vw !important;
+    max-width: unset;
+}
+
+.body-wrapper .main-wrapper .page-wrapper .content-wrapper {
+    min-height: calc(100vh - 84px - 62px) !important;
+}
+
+#POS-field {
+    height: 55vh
+}
+
+.mdc-card.info-card.info-card--primary .card-inner .card-icon-wrapper {
+    background: var(--bs-primary) !important;
+    box-shadow: 0 0 10px 5px rgb(13 110 253 / 28%);
+}
+
+.bg-primary {
+    background: var(--bs-primary) !important;
+}
+
+.text-primary {
+    color: var(--bs-primary) !important
+}
+
+.mdc-drawer {
+    background: unset;
+}
+
+.mdc-drawer__header,
+.mdc-drawer__content {
+    margin: .5em !important;
+}
+
+.mdc-list-item.mdc-drawer-item {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+.mdc-drawer .mdc-drawer__content .mdc-drawer-menu .mdc-drawer-link {
+    gap: .5rem;
+}
+
+.mdc-drawer .mdc-drawer__content .mdc-drawer-menu .mdc-drawer-label {
+    flex: 1 1 auto;
+    display: inline-flex;
+    align-items: center;
+    color: inherit;
+}
+
+.mdc-drawer .mdc-drawer__content .mdc-drawer-menu .mdc-drawer-item.mdc-list-item--activated .mdc-drawer-link {
+    background-color: rgba(122, 0, 255, 0.25);
+    border-radius: .75rem;
+    color: #fff !important;
+    font-weight: 600;
+}
+
+.mdc-drawer .mdc-drawer__content .mdc-drawer-menu .mdc-drawer-item.mdc-list-item--activated .mdc-drawer-link i {
+    color: inherit;
+}
+
+/* Design System Utilities */
+:root {
+    --ds-primary: #002d6c;
+    --ds-secondary: #007da0;
+    --ds-surface: #ffffff;
+    --ds-text: #0b1727;
+}
+
+.ds-bg-primary {
+    background-color: var(--ds-primary) !important;
+}
+
+.ds-bg-secondary {
+    background-color: var(--ds-secondary) !important;
+}
+
+.ds-text-primary {
+    color: var(--ds-primary) !important;
+}
+
+.ds-text-secondary {
+    color: var(--ds-secondary) !important;
+}
+
+.ds-hero {
+    background: linear-gradient(135deg, rgba(0, 45, 108, 0.08), rgba(0, 125, 160, 0.12));
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    padding: 1.5rem;
+    box-shadow: 0 14px 40px rgb(0 0 0 / 6%);
+}
+
+.ds-card {
+    background: var(--ds-surface);
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 4%);
+}
+
+.ds-btn {
+    border-radius: 12px;
+    font-weight: 600;
+    padding: 0.75rem 1.25rem;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    border: none;
+}
+
+.ds-btn:focus-visible,
+.ds-input:focus-visible {
+    outline: 2px solid var(--ds-secondary);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgb(0 125 160 / 20%);
+}
+
+.ds-btn-primary {
+    background: linear-gradient(135deg, var(--ds-primary), #001a40);
+    color: #ffffff;
+}
+
+.ds-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgb(0 45 108 / 25%);
+}
+
+.ds-btn-secondary {
+    background: linear-gradient(135deg, var(--ds-secondary), #005f77);
+    color: #ffffff;
+}
+
+.ds-btn-secondary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgb(0 125 160 / 25%);
+}
+
+.ds-input {
+    border: 1px solid #d9e2ec;
+    border-radius: 10px;
+    padding: 0.65rem 0.9rem;
+    background: #ffffff;
+    color: var(--ds-text);
+}
+
+.ds-input:focus {
+    border-color: var(--ds-secondary);
+    box-shadow: 0 0 0 3px rgb(0 125 160 / 15%);
+}
+
+.ds-form-label {
+    font-weight: 600;
+    color: var(--ds-text);
+}
+
+.ds-page {
+    background: var(--ds-surface);
+    border-radius: 18px;
+    padding: 1.5rem;
+}
+
+.modal-content {
+    background: var(--ds-surface);
+}
+
+.ds-kpi {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+    background: #f8fafc;
+}

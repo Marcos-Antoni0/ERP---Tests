@@ -1,0 +1,279 @@
+{% load humanize %}
+<style>
+  #uni_modal .modal-footer {
+    display: none;
+  }
+
+  .thermal-shell {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .thermal-wrapper {
+    font-family: 'Arial', 'Helvetica', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    width: 64mm;
+    max-width: 100%;
+    padding: 0 2mm 4mm;
+    margin: 0 auto;
+    color: #000;
+    background: #fff;
+    box-sizing: border-box;
+    -webkit-font-smoothing: none;
+    text-rendering: optimizeSpeed;
+  }
+
+  .thermal-wrapper h6 {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .thermal-divider {
+    border: none;
+    border-top: 1px dashed #000;
+    margin: 6px 0;
+  }
+
+  .thermal-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  .thermal-items {
+    margin-top: 4px;
+  }
+
+  .thermal-items .item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+  }
+
+  .thermal-items .item-name {
+    flex: 1;
+    padding: 0 4px;
+  }
+
+  .thermal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  @page {
+    size: 64mm auto;
+    margin: 0;
+  }
+
+  @media print {
+    html,
+    body {
+      margin: 0;
+      width: 64mm;
+      background: #fff;
+      color: #000;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .thermal-wrapper {
+      box-shadow: none !important;
+    }
+
+    .thermal-actions {
+      display: none !important;
+    }
+  }
+</style>
+
+<div class="thermal-shell">
+  <div class="thermal-wrapper" id="cash-receipt">
+      <div style="text-align: center; margin-bottom: 6px;">
+        <h6>{{ title }}</h6>
+        <small>Recibo Não Fiscal</small>
+      </div>
+
+      <hr class="thermal-divider" />
+
+      <div>
+        <div class="thermal-row">
+          <span>Data:</span>
+          <span>{{ sale.date_added|date:"d/m/Y H:i" }}</span>
+        </div>
+        <div class="thermal-row">
+          <span>Código:</span>
+          <span>{{ sale.code }}</span>
+        </div>
+        {% if sale.customer_name %}
+        <div class="thermal-row">
+          <span>Cliente:</span>
+          <span>{{ sale.customer_name }}</span>
+        </div>
+        {% endif %}
+        <div class="thermal-row">
+          <span>Pagamento:</span>
+          <span>{{ sale.get_forma_pagamento_display|default:"N/I" }}</span>
+        </div>
+        {% if payments %}
+        <div class="mt-1">
+          {% for payment in payments %}
+          <div class="thermal-row">
+            <span>{{ payment.method }}</span>
+            <span>R$ {{ payment.applied|floatformat:2 }}</span>
+          </div>
+          {% if payment.tendered != payment.applied or payment.change > 0 %}
+          <div class="thermal-row" style="font-size: 11px;">
+            <span>Recebido</span>
+            <span>R$ {{ payment.tendered|floatformat:2 }}</span>
+          </div>
+          {% if payment.change > 0 %}
+          <div class="thermal-row" style="font-size: 11px;">
+            <span>Troco</span>
+            <span>R$ {{ payment.change|floatformat:2 }}</span>
+          </div>
+          {% endif %}
+          {% endif %}
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <hr class="thermal-divider" />
+
+      <div class="thermal-row" style="font-weight: bold;">
+        <span style="width: 12%;">Qtd</span>
+        <span style="flex: 1; text-align: left;">Produto</span>
+        <span style="width: 30%; text-align: right;">Valor</span>
+      </div>
+
+      <div class="thermal-items">
+        {% for item in items %}
+        <div class="item">
+          <span style="width: 12%;">{{ item.quantity|floatformat:2 }}</span>
+          <span class="item-name">{{ item.name }}</span>
+          <span style="width: 30%; text-align: right;">R$ {{ item.total|floatformat:2 }}</span>
+        </div>
+        {% empty %}
+        <div class="item" style="justify-content: center;">
+          Nenhum item registrado.
+        </div>
+        {% endfor %}
+      </div>
+
+      <hr class="thermal-divider" />
+
+      <div class="thermal-row">
+        <span>Subtotal</span>
+        <span>R$ {{ sale.sub_total|floatformat:2 }}</span>
+      </div>
+      <div class="thermal-row">
+        <span>Impostos ({{ sale.tax|floatformat:2 }}%)</span>
+        <span>R$ {{ sale.tax_amount|floatformat:2 }}</span>
+      </div>
+      {% if sale.discount_total %}
+      <div class="thermal-row">
+        <span>Desconto</span>
+        <span>- R$ {{ sale.discount_total|floatformat:2 }}</span>
+      </div>
+      {% if sale.discount_reason %}
+      <div class="thermal-row" style="font-size: 11px;">
+        <span>Motivo</span>
+        <span>{{ sale.discount_reason }}</span>
+      </div>
+      {% endif %}
+      {% endif %}
+      {% if sale.delivery_fee %}
+      <div class="thermal-row">
+        <span>Taxa extra</span>
+        <span>R$ {{ sale.delivery_fee|floatformat:2 }}</span>
+      </div>
+      {% endif %}
+      <div class="thermal-row" style="font-weight: bold;">
+        <span>Total</span>
+        <span>R$ {{ sale.grand_total|floatformat:2 }}</span>
+      </div>
+      <div class="thermal-row">
+        <span>Recebido</span>
+        <span>R$ {{ sale.tendered_amount|floatformat:2 }}</span>
+      </div>
+      <div class="thermal-row">
+        <span>Troco</span>
+        <span>R$ {{ sale.amount_change|floatformat:2 }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="thermal-actions">
+    <button id="cash-receipt-print" class="btn btn-light border rounded-0 btn-sm">
+      <i class="mdi mdi-printer"></i> Imprimir
+    </button>
+    <button type="button" class="btn btn-secondary border rounded-0 btn-sm" data-bs-dismiss="modal">
+      <i class="mdi mdi-close"></i> Fechar
+    </button>
+  </div>
+</div>
+
+<script>
+  const printBtn = document.getElementById('cash-receipt-print');
+
+  function openPrintWindow() {
+    const content = document.getElementById('cash-receipt').outerHTML;
+    const printWindow = window.open('', '_blank', 'width=320,height=600,menubar=no,toolbar=no');
+    if (!printWindow) return;
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+        <head>
+          <meta charset="UTF-8" />
+          <title>{{ title }}</title>
+          <style>
+            @page { size: 64mm auto; margin: 0; }
+            html, body {
+              margin: 0;
+              width: 64mm;
+              background: #fff;
+              color: #000;
+              font-family: 'Arial', 'Helvetica', sans-serif;
+              font-size: 13px;
+              font-weight: 600;
+              line-height: 1.4;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .thermal-wrapper { padding: 0 2mm 4mm; box-sizing: border-box; }
+            .thermal-divider { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+            .thermal-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+            .thermal-items .item { display: flex; justify-content: space-between; margin-bottom: 2px; }
+            .item-name { flex: 1; padding: 0 4px; }
+          </style>
+        </head>
+        <body>
+          ${content}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.onload = function () {
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    };
+  }
+
+  if (printBtn) {
+    printBtn.addEventListener('click', openPrintWindow);
+  }
+
+  const autoPrint = {{ auto_print|default:False|yesno:"true,false" }};
+  if (autoPrint) {
+    setTimeout(openPrintWindow, 200);
+  }
+</script>

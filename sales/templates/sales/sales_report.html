@@ -1,0 +1,187 @@
+{% extends 'core/base.html' %}
+{% load humanize %}
+
+{% block pageContent %}
+<!-- Título -->
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+  <h1 class="h4 fw-bold text-primary mb-3">
+    <i class="bi bi-bar-chart-line me-2"></i>{{ page_title }}
+  </h1>
+</div>
+
+<!-- Filtros + Exportar -->
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12 mb-4">
+  <form method="get" class="d-flex gap-2 align-items-end">
+    <div>
+      <label class="form-label fw-bold">Data Inicial</label>
+      <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+    </div>
+    <div>
+      <label class="form-label fw-bold">Data Final</label>
+      <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
+    </div>
+    <button type="submit" class="btn btn-primary mt-2">
+      <i class="bi bi-filter-circle me-1"></i>Filtrar
+    </button>
+    <a href="{% url 'export_sales_report' %}?start_date={{ start_date }}&end_date={{ end_date }}"
+       class="btn btn-success mt-2 ms-auto">
+      <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
+    </a>
+  </form>
+</div>
+
+<!-- Cards de Totais -->
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12 mb-4">
+  <div class="d-flex gap-3 flex-wrap">
+    <div class="card flex-fill text-white bg-primary p-3">
+      <h5>Total Itens Vendidos</h5>
+      <h2>{{ totals.total_quantity|stringformat:"0.2f" }}</h2>
+    </div>
+    <div class="card flex-fill text-white bg-success p-3">
+      <h5>Receita Total (R$)</h5>
+      <h2>{{ totals.total_revenue|floatformat:2|intcomma }}</h2>
+    </div>
+    <div class="card flex-fill text-white bg-secondary p-3">
+      <h5>Custos (R$)</h5>
+      <h2>{{ totals.total_cost|floatformat:2|intcomma }}</h2>
+    </div>
+    <div class="card flex-fill text-white bg-success p-3">
+      <h5>Lucro (R$)</h5>
+      <h2>{{ totals.total_profit|floatformat:2|intcomma }}</h2>
+    </div>
+    <div class="card flex-fill text-white bg-warning p-3">
+      <h5>Transações</h5>
+      <h2>{{ totals.total_tx }}</h2>
+    </div>
+    <div class="card flex-fill text-white bg-info p-3">
+      <h5>Ticket Médio (R$)</h5>
+      <h2>{{ totals.total_average_ticket|floatformat:2 }}</h2>
+    </div>
+    <div class="card flex-fill text-white bg-secondary p-3">
+      <h5>Taxas de Entrega (R$)</h5>
+      <h2>{{ totals.total_delivery_fee|floatformat:2|intcomma }}</h2>
+    </div>
+    <div class="card flex-fill text-white bg-danger p-3">
+      <h5>Saídas de Caixa (R$)</h5>
+      <h2>{{ totals.total_cash_exits|floatformat:2|intcomma }}</h2>
+    </div>
+    <div class="card flex-fill text-white {% if debt_cards.pending.overdue > 0 %}bg-danger{% else %}bg-info{% endif %} p-3">
+      <h5>Débitos Pendentes</h5>
+      <h2>R$ {{ debt_cards.pending.total|floatformat:2|intcomma }}</h2>
+      <p class="mb-1">{{ debt_cards.pending.clients|intcomma }} cliente(s) com débito.</p>
+      {% if debt_cards.pending.overdue > 0 %}
+      <span class="badge bg-warning text-dark">Vencidos: {{ debt_cards.pending.overdue }}</span>
+      {% endif %}
+      <div class="mt-2">
+        <a href="{% url 'debts-list' %}" class="btn btn-sm btn-outline-light">Ver débitos</a>
+      </div>
+    </div>
+    <div class="card flex-fill text-white bg-success p-3">
+      <h5>Débitos Pagos (período)</h5>
+      <h2>R$ {{ debt_cards.paid.total|floatformat:2|intcomma }}</h2>
+      <p class="mb-1">{{ debt_cards.paid.count|intcomma }} baixa(s) registrada(s).</p>
+      <div class="mt-2">
+        <a href="{% url 'debts-list' %}?status=paid&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-sm btn-outline-light">Ver pagos</a>
+      </div>
+    </div>
+    <div class="card flex-fill text-white bg-primary p-3">
+      <h5>Débitos Pag + Lucro</h5>
+      <h2>R$ {{ debt_cards.paid_plus_profit|floatformat:2|intcomma }}</h2>
+      <p class="mb-1">Soma dos débitos pagos no período com o lucro do período.</p>
+    </div>
+  </div>
+</div>
+
+<!-- NOVA SEÇÃO: Tabela de Formas de Pagamento -->
+<!-- Seção de Formas de Pagamento -->
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12 mb-4">
+  <div class="card">
+    <div class="card-header bg-dark text-white">
+      <h5 class="mb-0"><i class="bi bi-credit-card me-2"></i>Formas de Pagamento</h5>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-secondary">
+            <tr>
+              <th>Forma de Pagamento</th>
+              <th class="text-center">Transações</th>
+              <th class="text-end">Total (R$)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for payment in payment_summary %}
+            <tr>
+              <td class="fw-bold">
+                {% if payment.forma_pagamento == "PIX" %}
+                  <i class="bi bi-qr-code me-1 text-primary"></i>
+                {% elif payment.forma_pagamento == "DINHEIRO" %}
+                  <i class="bi bi-cash me-1 text-success"></i>
+                {% elif payment.forma_pagamento == "DEBITO" %}
+                  <i class="bi bi-credit-card me-1 text-info"></i>
+                {% elif payment.forma_pagamento == "CREDITO" %}
+                  <i class="bi bi-credit-card-2-front me-1 text-danger"></i>
+                {% else %}
+                  <i class="bi bi-question-circle me-1"></i>
+                {% endif %}
+                {{ payment.forma_pagamento }}
+              </td>
+              <td class="text-center">{{ payment.count }}</td>
+              <td class="text-end">{{ payment.total_value|floatformat:2|intcomma }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center text-danger">Nenhum registro</td></tr>
+            {% endfor %}
+          </tbody>
+          <tfoot class="table-dark">
+            <tr>
+              <th>Total</th>
+              <th class="text-center">{{ totals.total_tx }}</th>
+              <th class="text-end">{{ totals.total_revenue|floatformat:2|intcomma }}</th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabela Detalhada -->
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12 mt-4">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>Data</th>
+          <th>Código</th>
+          <th>Produto</th>
+          <th>Categoria</th>
+          <th class="text-end">Qtde</th>
+          <th class="text-end">Total (R$)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in report_data %}
+        <tr>
+          <td class="fw-bold">{{ i.sale_date|date:"d/m/Y" }}</td>
+          <td>{{ i.product_id__code }}</td>
+          <td>{{ i.product_id__name }}</td>
+          <td>
+            <span class="badge bg-secondary">
+              {{ i.product_id__category_id__name }}
+            </span>
+          </td>
+          <td class="text-end">{{ i.total_quantity|stringformat:"0.2f" }}</td>
+          <td class="text-end">{{ i.total_revenue|floatformat:2|intcomma }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-danger">Nenhum registro</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock pageContent %}
+
+{% block ScriptBlock %}
+{% endblock ScriptBlock %}

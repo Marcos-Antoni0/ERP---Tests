@@ -1,0 +1,121 @@
+<div class="container-fluid">
+    <div class="alert alert-info">
+        <h6 class="mb-2">Importação de Estoque via Excel</h6>
+        <p class="mb-2">
+            Envie um arquivo <strong>.xlsx</strong> seguindo o modelo disponibilizado. A planilha deve conter as
+            seguintes colunas: <strong>{{ expected_headers|join:', ' }}</strong>.
+        </p>
+        <ul class="mb-2">
+            <li><strong>Código do Produto</strong>: código cadastrado no sistema (obrigatório).</li>
+            <li><strong>Categoria</strong>: categoria do item; caso não exista será criada automaticamente.</li>
+            <li><strong>Quantidade</strong>: estoque atual do item (obrigatório).</li>
+            <li><strong>Validade (dias)</strong>: utilize um dos valores permitidos (0, 30, 60, 90, 120, 180 ou 365).</li>
+            <li><strong>Preço</strong> e <strong>Custo</strong>: valores numéricos (aceitam vírgula ou ponto); se omitidos usaremos os valores do produto.</li>
+            <li><strong>Status</strong>: utilize <em>Ativo</em> ou <em>Inativo</em> (também são aceitos 1 ou 0).</li>
+        </ul>
+        <p class="mb-0">
+            Os registros são associados pelo código do produto. Caso já exista um item em estoque para o código informado,
+            ele será atualizado; caso contrário, um novo registro será criado.
+        </p>
+    </div>
+
+    <form id="upload-inventory-form" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="inventory_file" class="form-label">Arquivo de estoque (.xlsx)</label>
+            <input type="file" class="form-control" id="inventory_file" name="file" accept=".xlsx" required>
+            <div class="form-text">
+                Utilize o <a href="{% url 'download-estoque-template' %}">modelo de importação</a> como referência.
+            </div>
+        </div>
+        <div class="d-flex justify-content-end gap-2">
+            <a class="btn btn-outline-secondary btn-sm" href="{% url 'download-estoque-template' %}">
+                <i class="mdi mdi-file-download"></i> Baixar modelo
+            </a>
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="mdi mdi-upload"></i> Importar estoque
+            </button>
+        </div>
+    </form>
+
+    <div id="inventory-import-errors" class="mt-3 d-none">
+        <div class="alert alert-warning mb-2 py-2 px-3">
+            Algumas linhas não puderam ser importadas. Revise as pendências abaixo:
+        </div>
+        <ul class="list-group small"></ul>
+    </div>
+</div>
+
+<script>
+    $(function() {
+        $('#upload-inventory-form').submit(function(e) {
+            e.preventDefault();
+            var form = $(this);
+            $('.err-msg').remove();
+            $('#inventory-import-errors').addClass('d-none').find('ul').empty();
+
+            if (this.checkValidity() === false) {
+                this.reportValidity();
+                return false;
+            }
+
+            var el = $('<div>').addClass('err-msg alert').hide();
+
+            start_loader();
+            $.ajax({
+                headers: {
+                    "X-CSRFToken": '{{ csrf_token }}'
+                },
+                url: "{% url 'upload-estoque-page' %}",
+                method: 'POST',
+                data: new FormData(this),
+                cache: false,
+                contentType: false,
+                processData: false,
+                dataType: 'json',
+                error: function(err) {
+                    console.log(err);
+                    el.removeClass('alert-success alert-warning').addClass('alert-danger');
+                    el.text('Ocorreu um erro ao importar o arquivo.');
+                    form.prepend(el);
+                    el.show('slow');
+                    end_loader();
+                },
+                success: function(resp) {
+                    el.removeClass('alert-success alert-warning alert-danger');
+                    if (typeof resp === 'object') {
+                        if (resp.status === 'success') {
+                            el.addClass('alert-success');
+                            el.text(resp.msg || 'Estoque importado com sucesso.');
+                            form.prepend(el);
+                            el.show('slow');
+                            setTimeout(function() { location.reload(); }, 800);
+                        } else if (resp.status === 'partial') {
+                            el.addClass('alert-warning');
+                            el.text(resp.msg || 'Importação concluída com pendências.');
+                            form.prepend(el);
+                            el.show('slow');
+                            if (Array.isArray(resp.errors)) {
+                                var list = $('#inventory-import-errors ul');
+                                resp.errors.forEach(function(message) {
+                                    list.append($('<li class="list-group-item list-group-item-warning">').text(message));
+                                });
+                                $('#inventory-import-errors').removeClass('d-none');
+                            }
+                        } else {
+                            el.addClass('alert-danger');
+                            el.text(resp.msg || 'Não foi possível processar o arquivo.');
+                            form.prepend(el);
+                            el.show('slow');
+                        }
+                    } else {
+                        el.addClass('alert-danger');
+                        el.text('Resposta inesperada do servidor.');
+                        form.prepend(el);
+                        el.show('slow');
+                    }
+                    end_loader();
+                }
+            });
+        });
+    });
+</script>

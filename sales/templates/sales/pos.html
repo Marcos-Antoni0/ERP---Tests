@@ -1,0 +1,811 @@
+{% extends "core/base.html" %} {% block pageContent %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+    <div class="mdc-card py-2">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">Sistema de Vendas</h4>
+        </div>
+    </div>
+</div>
+{% if not cash_session_open %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+    <div class="alert alert-warning d-flex align-items-center gap-2 mb-0" role="alert">
+        <i class="mdi mdi-alert-circle-outline fs-4"></i>
+        <div>
+            Abra o caixa para registrar vendas no PDV. Enquanto o caixa estiver fechado, o fechamento de vendas ficará indisponível.
+        </div>
+    </div>
+</div>
+{% endif %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+    <div class="mdc-card">
+        <form action="" id="pos-form">
+            {% csrf_token %}
+            <fieldset>
+                <legend>Adicionar Produtos</legend>
+                <!-- Campo para código de barras -->
+                <div class="row align-items-end mb-3">
+                    <div class="col-lg-8 col-md-8 col-sm-12">
+                        <div class="form-group mb-3">
+                            <label for="barcode-input">Código de Barras</label>
+                            <input type="text" class="form-control form-control-sm" id="barcode-input" placeholder="Digite ou escaneie o código de barras...">
+                            <small class="text-muted">Formato: 2XXXXXX000000 (Prefixo + Código do Produto + Peso)</small>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-4 col-sm-12">
+                        <div class="form-group mb-3">
+                            <button class="btn btn-success btn-sm bg-gradient border rounded-0" type="button" id="process_barcode">
+                                <i class="mdi mdi-barcode-scan"></i> Processar Código
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="row align-items-end">
+                    <div class="col-lg-5 col-md-5 col-sm-12">
+                        <div class="form-group mb-3">
+                            <label for="product-id">Buscar/Selecionar Produto</label>
+                            <select id="product-id" class="form-select form-select-sm">
+                                <option value="" disabled selected></option>
+                                {% for est in products %}
+                                    <option value="{{ est.produto.id }}" data-is-combo="false">
+                                        {{ est.produto.code }} - {{ est.produto.name }} (Em estoque: {{ est.quantidade }})
+                                    </option>
+                                {% endfor %}
+                                {% if combo_products %}
+                                    <optgroup label="Combos">
+                                        {% for combo in combo_products %}
+                                            <option value="{{ combo.id }}" data-is-combo="true">
+                                                {{ combo.code }} - {{ combo.name }}{% if combo.combo_total_quantity %} ({{ combo.combo_total_quantity }} un/combo){% endif %}
+                                            </option>
+                                        {% endfor %}
+                                    </optgroup>
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-5 col-md-12">
+                        <div class="form-group mb-3">
+                            <label for="product-qty">Quantidade</label>
+                            <input type="number" class="form-control form-control-sm text-center" step="any" id="product-qty" value="1">
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-2 col-md-12">
+                        <div class="form-group mb-3">
+                            <button class="btn btn-light btn-sm bg-gradient border rounded-0 text-start" type="button" id="add_item"><i class="mdi mdi-plus"></i> Adicionar Item</button>
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
+            <fieldset>
+                <div class="d-flex w-100" id="POS-field">
+                    <div class="col-8 bg-gradient bg-light border h-100">
+                        <table class="table table-bordered">
+                            <colgroup>
+                                <col width="5%">
+                                <col width="15%">
+                                <col width="40%">
+                                <col width="20%">
+                                <col width="20%">
+                            </colgroup>
+                            <thead>
+                                <tr class="bg-dark bg-gradient bg-opacity-50 text-light">
+                                    <th class="py-1 px-2 text-center  text-light"></th>
+                                    <th class="py-1 px-2 text-center  text-light">QTD</th>
+                                    <th class="py-1 px-2 text-center  text-light">Produto</th>
+                                    <th class="py-1 px-2 text-center  text-light">Preço</th>
+                                    <th class="py-1 px-2 text-center  text-light">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-4 bg-gradient bg-dark bg-opacity-50 border h-100">
+                        <div class="col-12 py-4 px-2">
+                            <dl>
+                                <dt class="h4 fw-bold text-light">Subtotal</dt>
+                                <dd class="text-end py-1 px-2 rounded-0 bg-light">
+                                    <input type="hidden" name="sub_total" value="0">
+                                    <span class="h3 fw-bold" id="sub_total">0.00</span>
+                                </dd>
+                                <dt class="h4 fw-bold text-light">Imposto Inclusivo (%)</dt>
+                                <dd>
+                                    <input type="number" class="form-control form-control-lg rounded-0 text-end" step="any" min="0" max="100" name="tax" value="0">
+                                </dd>
+                                <dt class="h4 fw-bold text-light">Valor do Imposto</dt>
+                                <dd class="text-end py-1 px-2 rounded-0 bg-light">
+                                    <input type="hidden" name="tax_amount" value="0">
+                                    <span class="h3 fw-bold" id="tax_amount">0.00</span>
+                                </dd>
+                                <dt class="h4 fw-bold text-light">Desconto</dt>
+                                <dd>
+                                    <div class="bg-light p-2 rounded">
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text">R$</span>
+                                            <input type="number" class="form-control text-end" step="0.01" min="0" id="discount_total_input" name="discount_total" value="0.00">
+                                        </div>
+                                        <input type="text" class="form-control form-control-sm mt-2" name="discount_reason" id="discount_reason" placeholder="Informe o motivo do desconto" maxlength="255">
+                                        <small class="text-muted">Obrigatório quando houver desconto.</small>
+                                    </div>
+                                </dd>
+                                <dt class="h4 fw-bold text-light">Total Geral</dt>
+                                <dd class="text-end py-1 px-2 rounded-0 bg-light">
+                                    <input type="hidden" name="tendered_amount" value="0">
+                                    <input type="hidden" name="amount_change" value="0">
+                                    <input type="hidden" name="grand_total" value="0">
+                                    <span class="h3 fw-bold" id="grand_total">0.00</span>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
+            <div class="row">
+                <div class="col-md-12 text-end">
+                    <button class="btn btn-primary btn-sm rounded-0" type="button" id="check_out"{% if not cash_session_open %} disabled data-bs-toggle="tooltip" data-bs-placement="left" title="Abra o caixa para liberar o PDV"{% endif %}><i class="mdi mdi-save"></i> Finalizar Compra (F2)</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<noscript id="item-clone">
+    <tr>
+        <td class="px-2 py-1 text-center">
+            <button class="btn btn-sm btn-outline-danger rounded-0 rem-item" type="button"><i class="mdi mdi-close"></i></button>
+        </td>
+        <td class="px-2 py-1">
+            <input type="hidden" name="product_id[]">
+            <input type="hidden" name="price[]">
+            <input type="hidden" name="combo_config[]">
+            <input type="number" name="qty[]" min="0" step="any" class="form-control form-control-sm rounded-0 text-center">
+        </td>
+        <td class="px-2 py-1 product_name text-start"></td>
+        <td class="px-2 py-1 product_price text-end"></td>
+        <td class="px-2 py-1 product_total text-end"></td>
+    </tr>
+</noscript> {% endblock pageContent %} {% block ScriptBlock %}
+<script>
+    const cashSessionOpen = {{ cash_session_open|yesno:"true,false" }};
+    var product_json = '{{ product_json }}'
+    if (product_json == "" || product_json == "{}") {
+        product_json = {}
+    } else {
+        product_json = product_json.replaceAll('&quot;', '"')
+        product_json = $.parseJSON(product_json)
+    }
+    var prod_arr = {}
+    if (Object.keys(product_json).length > 0) {
+        Object.keys(product_json).map(k => {
+            prod_arr[product_json[k].id] = product_json[k]
+        })
+    }
+
+    // Função para processar código de barras - VERSÃO ORIGINAL
+    function processBarcode(barcode) {
+        // Remove espaços e valida se tem 13 dígitos
+        barcode = barcode.trim();
+        
+        if (barcode.length !== 13) {
+            alert("Código de barras deve ter exatamente 13 dígitos!");
+            return false;
+        }
+        
+        // Verifica se começa com 2 (prefixo da balança)
+        if (!barcode.startsWith('2')) {
+            alert("Código de barras deve começar com '2' (prefixo da balança)!");
+            return false;
+        }
+        
+        // Extrai os componentes do código
+        var prefix = barcode.substring(0, 1);           // Posição 0: "2"
+        var productCode = barcode.substring(1, 7);      // Posições 1-6: código do produto
+        var weightCode = barcode.substring(7, 13);      // Posições 7-12: peso
+        
+        // CORREÇÃO: Converte o peso corretamente
+        var weightValue = parseInt(weightCode, 10);
+        var weight;
+        
+        if (weightCode.startsWith('00')) {
+            // Casos como 006122 → 0.612 kg
+            weight = weightValue / 10000;
+        } else if (weightCode.startsWith('0') && !weightCode.startsWith('00')) {
+            // Casos como 010069 → 1.006 kg  
+            weight = weightValue / 10000;
+        } else {
+            // Casos como 123456 → 123.456 kg
+            weight = weightValue / 1000;
+        }
+        
+        console.log("Código processado:", {
+            barcode: barcode,
+            prefix: prefix,
+            productCode: productCode,
+            weightCode: weightCode,
+            weightValue: weightValue,
+            weight: weight.toFixed(3) + " kg"
+        });
+        
+        // Procura o produto pelo código
+        var foundProduct = null;
+        var foundProductId = null;
+        
+        Object.keys(prod_arr).forEach(function(id) {
+            var product = prod_arr[id];
+            
+            // Múltiplas estratégias de busca
+            if (product.id == productCode || id == productCode) {
+                foundProduct = product;
+                foundProductId = id;
+                return;
+            }
+            
+            if (product.code == productCode) {
+                foundProduct = product;
+                foundProductId = id;
+                return;
+            }
+            
+            if (product.codigo_barras == productCode) {
+                foundProduct = product;
+                foundProductId = id;
+                return;
+            }
+            
+            if (product.barcode == productCode) {
+                foundProduct = product;
+                foundProductId = id;
+                return;
+            }
+            
+            if (product.product_code == productCode) {
+                foundProduct = product;
+                foundProductId = id;
+                return;
+            }
+        });
+        
+        if (!foundProduct) {
+            alert("Produto não encontrado com o código: " + productCode);
+            return false;
+        }
+        
+        if (foundProduct.is_combo) {
+            openComboModal(foundProductId, weight, foundProduct);
+            return true;
+        }
+
+        if ($('#POS-field table tbody input[name="product_id[]"][value="' + foundProductId + '"]').length > 0) {
+            var existingRow = $('#POS-field table tbody input[name="product_id[]"][value="' + foundProductId + '"]').closest('tr');
+            var currentQty = parseFloat(existingRow.find('[name="qty[]"]').val());
+            var newQty = currentQty + weight;
+            existingRow.find('[name="qty[]"]').val(newQty.toFixed(3));
+            calc();
+
+            alert("Quantidade atualizada para o produto: " + foundProduct.name + " (+" + weight.toFixed(3) + "kg)");
+        } else {
+            addProductToList(foundProductId, weight, foundProduct);
+        }
+
+        return true;
+    }
+
+    // Wrapper para suportar tamb��m c��digos EAN (prefixo diferente de 2)
+    function processBarcodeEnhanced(barcode) {
+        // C��digos de balan��a (prefixo 2) usam a fun��ǜo original
+        if (barcode && barcode.trim().startsWith('2')) {
+            return processBarcode(barcode);
+        }
+
+        // Demais c��digos: trata como EAN e adiciona 1 unidade
+        if (!barcode) {
+            return false;
+        }
+
+        barcode = barcode.trim();
+
+        if (barcode.length !== 13) {
+            alert("C��digo de barras deve ter exatamente 13 d��gitos!");
+            return false;
+        }
+
+        var eanCode = barcode;
+        var eanProduct = null;
+        var eanProductId = null;
+
+        Object.keys(prod_arr).forEach(function(id) {
+            var product = prod_arr[id];
+
+            if (eanProduct) {
+                return;
+            }
+
+            if (
+                product.code == eanCode ||
+                product.codigo_barras == eanCode ||
+                product.barcode == eanCode ||
+                product.product_code == eanCode ||
+                String(product.id) === eanCode ||
+                String(id) === eanCode
+            ) {
+                eanProduct = product;
+                eanProductId = id;
+            }
+        });
+
+        if (!eanProduct) {
+            alert("Produto nǜo encontrado com o c��digo: " + eanCode);
+            return false;
+        }
+
+        var qty = 1;
+
+        if (eanProduct.is_combo) {
+            openComboModal(eanProductId, qty, eanProduct);
+            return true;
+        }
+
+        var selector = '#POS-field table tbody input[name="product_id[]"][value="' + eanProductId + '"]';
+        if ($(selector).length > 0) {
+            var existingRow = $(selector).closest('tr');
+            var currentQty = parseFloat(existingRow.find('[name="qty[]"]').val());
+            var newQty = currentQty + qty;
+            existingRow.find('[name="qty[]"]').val(newQty.toFixed(3));
+            calc();
+        } else {
+            addProductToList(eanProductId, qty, eanProduct);
+        }
+
+        return true;
+    }
+    
+    // Função para adicionar produto à lista
+    function addProductToList(productId, quantity, productData, comboConfig = null, comboSummary = '') {
+        var tr = $($('noscript#item-clone').html()).clone();
+        tr.find('[name="qty[]"]').val(quantity.toFixed(3));
+        tr.find('[name="product_id[]"]').val(productId);
+        tr.find('[name="price[]"]').val(productData.price);
+        tr.find('[name="combo_config[]"]').val(comboConfig ? JSON.stringify(comboConfig) : '');
+        tr.find('.product_name').text(productData.name);
+        if (comboSummary) {
+            tr.find('.product_name').append('<br><small class="text-muted">' + comboSummary + '</small>');
+        }
+        tr.find('.product_price').text(parseFloat(productData.price).toLocaleString('pt-BR'));
+        tr.find('.product_total').text(parseFloat(productData.price * quantity).toLocaleString('pt-BR'));
+        $('#POS-field table tbody').append(tr);
+        calc();
+        
+        // Adiciona eventos para a nova linha
+        tr.find('[name="qty[]"]').on('input keypress keyup keydown', function() {
+            calc();
+        });
+        tr.find('.rem-item').click(function() {
+            if (confirm("Tem certeza de que deseja remover o produto " + productData.name + " da lista?") == true) {
+                tr.remove();
+                calc();
+            }
+        });
+    }
+
+    function calc() {
+        var sub_total = 0;
+
+        $('#POS-field table tbody tr').each(function() {
+            price = $(this).find('[name="price[]"]').val()
+            qty = $(this).find('[name="qty[]"]').val()
+            qty = qty > 0 ? qty : 0
+            total = parseFloat(price) * parseFloat(qty)
+
+            $(this).find('.product_total').text(parseFloat(total).toFixed(2).replace('.', ','))
+            sub_total += parseFloat(total)
+        })
+
+        var taxRate = parseFloat($('[name="tax"]').val());
+        if (isNaN(taxRate) || taxRate < 0) {
+            taxRate = 0;
+        }
+        var tax = taxRate / 100;
+        var tax_amount = parseFloat(sub_total) * parseFloat(tax);
+
+        $('#tax_amount').text(parseFloat(tax_amount).toFixed(2).replace('.', ','))
+        $('[name="tax_amount"]').val(parseFloat(tax_amount).toFixed(2))
+
+        var discountInput = $('#discount_total_input');
+        var discountValue = parseFloat(discountInput.val());
+        if (isNaN(discountValue) || discountValue < 0) {
+            discountValue = 0;
+        }
+        var maxDiscount = parseFloat(sub_total) + parseFloat(tax_amount);
+        if (discountValue > maxDiscount) {
+            discountValue = maxDiscount;
+        }
+        discountInput.val(discountValue.toFixed(2));
+
+        var final_total = parseFloat(sub_total) + parseFloat(tax_amount) - discountValue;
+        if (final_total < 0) {
+            final_total = 0;
+        }
+
+        $('#grand_total').text(parseFloat(final_total).toFixed(2).replace('.', ','))
+        $('[name="grand_total"]').val(parseFloat(final_total).toFixed(2))
+
+        $('#sub_total').text(parseFloat(sub_total).toFixed(2).replace('.', ','))
+        $('[name="sub_total"]').val(parseFloat(sub_total).toFixed(2))
+
+        return final_total;
+    }
+
+    // Função para finalizar compra (centralizada para reutilização)
+    function finalizarCompra() {
+        if (!cashSessionOpen) {
+            alert("Abra o caixa para registrar vendas no PDV.");
+            return false;
+        }
+        if ($('#POS-field table tbody tr').length <= 0) {
+            alert("Adicione pelo menos 1 produto primeiro!");
+            return false;
+        }
+        const discountValue = parseFloat($('#discount_total_input').val()) || 0;
+        if (discountValue > 0) {
+            const reason = ($('#discount_reason').val() || '').trim();
+            if (!reason) {
+                alert('Informe o motivo do desconto antes de finalizar a venda.');
+                $('#discount_reason').focus();
+                return false;
+            }
+        }
+        const finalTotal = calc();
+        uni_modal("Finalizar Compra", "{% url 'checkout-modal' %}?grand_total=" + finalTotal.toFixed(2))
+    }
+
+    var comboSelectionContext = null;
+
+    function openComboModal(productId, quantity, productData) {
+        if (!productData.combo_items || productData.combo_items.length === 0) {
+            alert('O combo selecionado não possui itens configurados.');
+            return;
+        }
+
+        comboSelectionContext = {
+            productId: productId,
+            quantity: quantity,
+            productData: productData
+        };
+
+        const modal = $('#comboSelectionModal');
+        modal.find('.combo-product-name').text(productData.name);
+        modal.find('.combo-quantity').text(quantity.toFixed(3));
+        modal.find('.combo-total-required').text(productData.combo_total_quantity ? productData.combo_total_quantity : 'Livre');
+        modal.find('.combo-max-flavors').text(productData.combo_max_flavors ? productData.combo_max_flavors : 'Sem limite');
+
+        const tbody = modal.find('tbody');
+        tbody.empty();
+        productData.combo_items.forEach(function(item) {
+            var row = $('<tr>');
+            row.data('component-id', item.component_id);
+            row.data('component-name', item.name);
+
+            var nameCell = $('<td>');
+            nameCell.append($('<div class="fw-semibold">').text(item.name));
+            var stockInfo = (item.stock !== undefined && item.stock !== null) ? item.stock : '—';
+            nameCell.append('<div class="text-muted small">Estoque atual: ' + stockInfo + '</div>');
+            row.append(nameCell);
+
+            var input = $('<input type="number" class="form-control form-control-sm text-end" min="0" step="0.01">');
+            var defaultQuantity = item.quantity ? parseFloat(item.quantity) : 0;
+            input.val(defaultQuantity);
+            row.append($('<td class="text-center">').append(input));
+
+            tbody.append(row);
+        });
+
+        modal.modal('show');
+    }
+
+    $(function() {
+        if (typeof bootstrap !== 'undefined') {
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+                new bootstrap.Tooltip(el);
+            });
+        }
+        // Inicializa Select2 com busca
+        $('#product-id').select2({
+            placeholder: "Busque ou selecione o produto aqui",
+            width: '100%',
+            allowClear: true,
+            language: {
+                noResults: function() {
+                    return "Nenhum produto encontrado";
+                },
+                searching: function() {
+                    return "Buscando...";
+                }
+            }
+        })
+        
+        // Atalho de teclado F2
+        $(document).keydown(function(e) {
+            if (e.keyCode === 113) { // F2
+                e.preventDefault();
+                finalizarCompra();
+                return false;
+            }
+        });
+        
+        // Event listener para o campo de código de barras
+        $('#barcode-input').on('keypress', function(e) {
+            if (e.which === 13) { // Enter key
+                e.preventDefault();
+                var barcode = $(this).val();
+                if (barcode) {
+                    if (processBarcodeEnhanced(barcode)) {
+                        $(this).val(''); // Limpa o campo após processar
+                    }
+                }
+            }
+        });
+        
+        // Event listener para o botão processar código
+        $('#process_barcode').click(function() {
+            var barcode = $('#barcode-input').val();
+            if (!barcode) {
+                alert("Digite um código de barras!");
+                return;
+            }
+            if (processBarcodeEnhanced(barcode)) {
+                $('#barcode-input').val(''); // Limpa o campo após processar
+            }
+        });
+
+        // Auto-focus no campo de código de barras
+        $('#barcode-input').focus();
+
+        $('#confirmComboSelection').click(function() {
+            if (!comboSelectionContext) {
+                $('#comboSelectionModal').modal('hide');
+                return;
+            }
+
+            var modal = $('#comboSelectionModal');
+            var productData = comboSelectionContext.productData;
+            var qty = comboSelectionContext.quantity;
+            var selections = [];
+            var totalPerCombo = 0;
+            var activeFlavors = 0;
+            var hasError = false;
+
+            modal.find('tbody tr').each(function() {
+                if (hasError) {
+                    return;
+                }
+                var row = $(this);
+                var value = parseFloat(row.find('input').val());
+                if (isNaN(value) || value < 0) {
+                    alert('Informe quantidades válidas para os componentes do combo.');
+                    hasError = true;
+                    return;
+                }
+                if (value > 0) {
+                    activeFlavors += 1;
+                }
+                totalPerCombo += value;
+                selections.push({
+                    component_id: row.data('component-id'),
+                    quantity: value,
+                    name: row.data('component-name')
+                });
+            });
+
+            if (hasError) {
+                return;
+            }
+
+            var nonZeroItems = selections.filter(function(item) { return item.quantity > 0; });
+            if (nonZeroItems.length === 0) {
+                alert('Informe pelo menos um componente para o combo.');
+                return;
+            }
+
+            if (productData.combo_max_flavors && productData.combo_max_flavors > 0 && activeFlavors > productData.combo_max_flavors) {
+                alert('Número de sabores selecionados excede o limite do combo.');
+                return;
+            }
+
+            if (productData.combo_total_quantity) {
+                var required = parseFloat(productData.combo_total_quantity);
+                if (Math.abs(totalPerCombo - required) > 0.0001) {
+                    alert('A soma das quantidades deve ser igual a ' + required + '.');
+                    return;
+                }
+            }
+
+            var summary = nonZeroItems
+                .map(function(item) { return item.quantity + 'x ' + item.name; })
+                .join(', ');
+
+            addProductToList(
+                comboSelectionContext.productId,
+                qty,
+                productData,
+                selections,
+                summary
+            );
+
+            $('#comboSelectionModal').modal('hide');
+            comboSelectionContext = null;
+        });
+
+        $('#comboSelectionModal').on('hidden.bs.modal', function() {
+            comboSelectionContext = null;
+        });
+
+        $('#add_item').click(function() {
+            var id = $('#product-id').val()
+            var qty = $('#product-qty').val()
+            console.log(id, qty)
+            if (id == '' || qty == '' || id == null || qty == null) {
+                alert("Campo Produto e Quantidade são obrigatórios!")
+                return false
+            }
+            if (!!prod_arr[id]) {
+                data = prod_arr[id]
+                if (!data.is_combo && $('#POS-field table tbody input[name="product_id[]"][value="' + id + '"]').length > 0) {
+                    alert('Item Já Adicionado na Lista.')
+                    return false;
+                }
+                if (data.is_combo) {
+                    openComboModal(id, parseFloat(qty), data);
+                } else {
+                    addProductToList(id, parseFloat(qty), data);
+                }
+                $('#product-id').val('').trigger('change')
+                $('#product-qty').val(1)
+            } else {
+                alert("Produto Não Definido");
+            }
+        })
+        
+        $('[name="tax"]').on('input keypress keydown keyup', function() {
+            calc()
+        })
+
+        $('#discount_total_input').on('input', function() {
+            calc();
+        })
+
+        $('#check_out').click(function() {
+            finalizarCompra();
+        })
+
+        calc();
+        
+        $('#pos-form').submit(function(e) {
+            e.preventDefault();
+            var _this = $(this)
+            $('.err-msg').remove();
+            var el = $('<div>')
+            el.addClass("alert alert-danger err-msg")
+            el.hide()
+            if (_this[0].checkValidity() == false) {
+                _this[0].reportValidity();
+                return false;
+            }
+            start_loader();
+            $.ajax({
+                headers: {
+                    "X-CSRFToken": '{{csrf_token}}'
+                },
+                url: "{% url 'save-pos' %}",
+                data: new FormData($(this)[0]),
+                cache: false,
+                contentType: false,
+                processData: false,
+                method: 'POST',
+                type: 'POST',
+                dataType: 'json',
+                error: err => {
+                    console.log(err)
+                    end_loader();
+                },
+                success: function(resp) {
+                    if (typeof resp == 'object' && resp.status == 'success') {
+                        el.removeClass("alert alert-danger err-msg")
+                        el.addClass("alert alert-success")
+                        
+                        // Mensagem de sucesso baseada no tipo de operação
+                        var successMsg = '';
+                        var extraMsg = '';
+                        if (resp.type == 'pedido') {
+                            successMsg = 'Pedido registrado com sucesso!';
+                        } else {
+                            successMsg = 'Venda finalizada com sucesso!';
+                        }
+                        if (resp.register_debt) {
+                            var amountDisplay = '';
+                            if (resp.debt_amount) {
+                                var parsedAmount = parseFloat(resp.debt_amount);
+                                if (!isNaN(parsedAmount)) {
+                                    amountDisplay = parsedAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                }
+                            }
+                            if (resp.debt_created && amountDisplay) {
+                                extraMsg = 'Débito gerado para o cliente no valor de R$ ' + amountDisplay + '.';
+                            } else {
+                                extraMsg = 'Venda a prazo registrada e vinculada ao cliente.';
+                            }
+                        }
+                        if (resp.receipt_url) {
+                            const popup = window.open(resp.receipt_url, '_blank', 'width=420,height=680,menubar=no,toolbar=no');
+                            if (!popup) {
+                                // Fallback: iframe oculto para acionar auto_print
+                                const iframe = document.createElement('iframe');
+                                iframe.style.display = 'none';
+                                iframe.src = resp.receipt_url;
+                                document.body.appendChild(iframe);
+                            }
+                        }
+                        
+                        el.text(successMsg)
+                        if (extraMsg) {
+                            $('<div class="mt-1 small fw-semibold"></div>').text(extraMsg).appendTo(el);
+                        }
+                        _this.prepend(el)
+                        el.show('slow')
+                        
+                        // Fecha o modal automaticamente após 2 segundos
+                        setTimeout(function() {
+                            $('#uni_modal').modal('hide')
+                            location.reload()
+                        }, 2000);
+                        
+                    } else if (resp.status == 'failed' && !!resp.msg) {
+                        el.text(resp.msg)
+                        _this.prepend(el)
+                        el.show('slow')
+                    } else {
+                        el.text("Ocorreu um erro", 'error');
+                        _this.prepend(el)
+                        el.show('slow')
+                        console.err(resp)
+                    }
+                    $("html, body, .modal").scrollTop(0);
+                    end_loader()
+                }
+            })
+        })
+    })
+</script>
+<div class="modal fade" id="comboSelectionModal" tabindex="-1" aria-labelledby="comboSelectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="comboSelectionModalLabel">Configurar Combo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6 class="mb-1 combo-product-name"></h6>
+                    <div class="text-muted small">Quantidade de combos: <span class="combo-quantity">1</span></div>
+                    <div class="text-muted small">Total exigido por combo: <span class="combo-total-required">—</span></div>
+                    <div class="text-muted small">Máximo de sabores: <span class="combo-max-flavors">—</span></div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Produto</th>
+                                <th class="text-center" style="width: 160px;">Quantidade por combo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmComboSelection">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock ScriptBlock %}

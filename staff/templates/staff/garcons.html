@@ -1,0 +1,182 @@
+{% extends 'core/base.html' %}
+
+{% block pageContent %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+  <div class="card shadow-sm border-0">
+    <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+      <div>
+        <h2 class="h4 mb-1 fw-bold">Garçons</h2>
+        <p class="text-muted mb-0">Cadastre e gerencie os atendentes disponíveis para assumir mesas.</p>
+      </div>
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#garcomModal" data-mode="create">
+        <i class="material-icons align-middle me-1">add</i> Novo garçom
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+      <h3 class="h6 mb-0 fw-bold">Equipe cadastrada</h3>
+      <span class="badge bg-light text-dark">{{ garcons|length }} profissional{{ garcons|length|pluralize:"s" }}</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Nome</th>
+              <th>Código</th>
+              <th>Status</th>
+              <th class="text-end">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for garcom in garcons %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ garcom.name }}</div>
+                  <small class="text-muted">Criado em {{ garcom.created_at|date:"d/m/Y H:i" }}</small>
+                </td>
+                <td>{{ garcom.code }}</td>
+                <td>
+                  {% if garcom.is_active %}
+                    <span class="badge bg-success">Ativo</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Inativo</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <div class="btn-group" role="group">
+                    <button type="button"
+                            class="btn btn-outline-primary btn-sm"
+                            data-bs-toggle="modal"
+                            data-bs-target="#garcomModal"
+                            data-mode="edit"
+                            data-url="{% url 'editar_garcom' garcom.id %}"
+                            data-name="{{ garcom.name }}"
+                            data-code="{{ garcom.code }}"
+                            data-active="{% if garcom.is_active %}1{% else %}0{% endif %}">
+                      <i class="material-icons align-middle">edit</i>
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-danger btn-sm"
+                            data-bs-toggle="modal"
+                            data-bs-target="#deleteGarcomModal"
+                            data-url="{% url 'excluir_garcom' garcom.id %}"
+                            data-name="{{ garcom.name }}">
+                      <i class="material-icons align-middle">delete</i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="4" class="text-center py-4 text-muted">Nenhum garçom cadastrado até o momento.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de cadastro/edição -->
+<div class="modal fade" id="garcomModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="garcomForm" action="{% url 'salvar_garcom' %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'garcons' %}">
+        <div class="modal-header">
+          <h5 class="modal-title">Novo garçom</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label" for="garcom-name">Nome</label>
+            <input type="text" class="form-control" name="name" id="garcom-name" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="garcom-code">Código/Matrícula</label>
+            <input type="text" class="form-control" name="code" id="garcom-code" required>
+          </div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="garcom-active" name="is_active" checked>
+            <label class="form-check-label" for="garcom-active">Ativo</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de exclusão -->
+<div class="modal fade" id="deleteGarcomModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="deleteGarcomForm">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'garcons' %}">
+        <div class="modal-header">
+          <h5 class="modal-title">Excluir garçom</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-0" id="deleteGarcomMessage">Deseja realmente excluir este garçom?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger">Excluir</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block ScriptBlock %}
+<script>
+  const garcomModal = document.getElementById('garcomModal');
+  if (garcomModal) {
+    garcomModal.addEventListener('show.bs.modal', event => {
+      const button = event.relatedTarget;
+      const mode = button?.getAttribute('data-mode') || 'create';
+      const form = garcomModal.querySelector('#garcomForm');
+      const title = garcomModal.querySelector('.modal-title');
+      if (mode === 'edit') {
+        form.action = button.getAttribute('data-url');
+        title.textContent = 'Editar garçom';
+        garcomModal.querySelector('#garcom-name').value = button.getAttribute('data-name') || '';
+        garcomModal.querySelector('#garcom-code').value = button.getAttribute('data-code') || '';
+        const isActive = button.getAttribute('data-active') === '1';
+        garcomModal.querySelector('#garcom-active').checked = isActive;
+      } else {
+        form.action = '{% url "salvar_garcom" %}';
+        title.textContent = 'Novo garçom';
+        garcomModal.querySelector('#garcom-name').value = '';
+        garcomModal.querySelector('#garcom-code').value = '';
+        garcomModal.querySelector('#garcom-active').checked = true;
+      }
+    });
+  }
+
+  const deleteGarcomModal = document.getElementById('deleteGarcomModal');
+  if (deleteGarcomModal) {
+    deleteGarcomModal.addEventListener('show.bs.modal', event => {
+      const button = event.relatedTarget;
+      const form = deleteGarcomModal.querySelector('#deleteGarcomForm');
+      const name = button?.getAttribute('data-name') || 'este garçom';
+      form.action = button.getAttribute('data-url');
+      deleteGarcomModal.querySelector('#deleteGarcomMessage').textContent = `Deseja realmente excluir ${name}?`;
+    });
+  }
+</script>
+{% endblock ScriptBlock %}

@@ -1,0 +1,230 @@
+{% extends "core/base.html" %}
+{% block pageContent %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+  <div class="mdc-card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h4 class="card-title mb-1">Débitos</h4>
+        <p class="text-muted mb-0">Registre, edite ou exclua débitos e marque pagamentos.</p>
+      </div>
+    </div>
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">
+        <div class="alert alert-warning h-100 mb-0">
+          <div class="fw-bold">Em aberto</div>
+          <div class="display-6">R$ {{ stats.open_total|default:0|floatformat:2 }}</div>
+          <div class="small text-muted">{{ stats.count_open|default:0 }} pendente(s)</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="alert alert-success h-100 mb-0">
+          <div class="fw-bold">Pago</div>
+          <div class="display-6">R$ {{ stats.paid_total|default:0|floatformat:2 }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-lg-4">
+        <form method="post" class="border rounded p-3 bg-light" id="debt-form">
+          {% csrf_token %}
+          <input type="hidden" name="debt_id" id="debt_id">
+          <h6 class="mb-3" id="debt-form-title">Registrar débito</h6>
+          <div class="mb-2">
+            <label class="form-label">Cliente</label>
+            <select name="client_id" id="client_id" class="form-select form-select-sm js-client-select" required>
+              <option value="">Selecione...</option>
+              {% for client in clients %}
+              <option value="{{ client.id }}">{{ client.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Valor</label>
+            <input type="number" name="amount" step="0.01" min="0.01" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Vencimento</label>
+            <input type="date" name="due_date" class="form-control form-control-sm">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Descrição</label>
+            <textarea name="description" rows="2" class="form-control form-control-sm"></textarea>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <button type="button" class="btn btn-link btn-sm text-danger px-0 d-none" id="debt-cancel">
+              Cancelar edição
+            </button>
+            <button type="submit" class="btn btn-primary btn-sm" id="debt-submit">
+              <i class="mdi mdi-content-save"></i> Salvar
+            </button>
+          </div>
+        </form>
+      </div>
+      <div class="col-lg-8">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3 mb-3">
+          <div class="btn-group btn-group-sm">
+            <a href="{% url 'debts-list' %}?status=open{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" class="btn btn-outline-warning {% if status_filter == 'open' %}active{% endif %}">Em aberto</a>
+            <a href="{% url 'debts-list' %}?status=paid{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" class="btn btn-outline-success {% if status_filter == 'paid' %}active{% endif %}">Pagos</a>
+            <a href="{% url 'debts-list' %}?status=all{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" class="btn btn-outline-secondary {% if status_filter == 'all' %}active{% endif %}">Todos</a>
+          </div>
+          <form method="get" class="row g-2 align-items-end flex-grow-1">
+            <input type="hidden" name="status" value="{{ status_filter|default:'open' }}">
+            <div class="col-12 col-md-5 col-lg-4">
+              <label class="form-label mb-1">Data inicial</label>
+              <input type="date" name="start_date" value="{{ start_date|default:'' }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-12 col-md-5 col-lg-4">
+              <label class="form-label mb-1">Data final</label>
+              <input type="date" name="end_date" value="{{ end_date|default:'' }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-12 col-md-2 col-lg-auto d-flex gap-2 align-items-end">
+              <button type="submit" class="btn btn-outline-primary btn-sm">
+                <i class="mdi mdi-filter-outline"></i> Filtrar
+              </button>
+              {% if start_date or end_date %}
+              <a href="{% url 'debts-list' %}?status={{ status_filter|default:'open' }}" class="btn btn-link btn-sm text-muted">Limpar</a>
+              {% endif %}
+            </div>
+          </form>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Cliente</th>
+                <th>Registrado em</th>
+                <th>Valor</th>
+                <th>Vencimento</th>
+                <th>Venda</th>
+                <th>Descrição</th>
+                <th class="text-end">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for debt in debts %}
+              <tr>
+                <td>
+                  {% if debt.status == 'open' %}
+                    <span class="badge bg-warning text-dark">Em aberto</span>
+                  {% else %}
+                    <span class="badge bg-success">Pago</span>
+                  {% endif %}
+                </td>
+                <td>{{ debt.client.name }}</td>
+                <td>{{ debt.created_at|date:"d/m/Y H:i" }}</td>
+                <td>R$ {{ debt.amount|floatformat:2 }}</td>
+                <td>{{ debt.due_date|date:"d/m/Y"|default:"-" }}</td>
+                <td>
+                  {% if debt.sale %}
+                    <div class="fw-bold">#{{ debt.sale.code }}</div>
+                    <div class="text-muted small">{{ debt.sale.date_added|date:"d/m/Y H:i" }}</div>
+                  {% else %}
+                    <span class="text-muted">-</span>
+                  {% endif %}
+                </td>
+                <td class="small">{{ debt.description|default:"-" }}</td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm" role="group">
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      data-debt-edit
+                      data-id="{{ debt.id }}"
+                      data-client-id="{{ debt.client.id }}"
+                      data-amount="{{ debt.amount|floatformat:2 }}"
+                      data-description="{{ debt.description|default_if_none:'' }}"
+                      data-due-date="{{ debt.due_date|date:'Y-m-d' }}"
+                      {% if debt.status != 'open' %}disabled title="Débito já pago"{% endif %}
+                    >
+                      <i class="mdi mdi-pencil"></i>
+                    </button>
+                    <form method="post" action="{% url 'debt-delete' debt.id %}">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Remover este débito?')" {% if debt.status != 'open' %}disabled title="Débito já pago"{% endif %}>
+                        <i class="mdi mdi-delete"></i>
+                      </button>
+                    </form>
+                    {% if debt.status == 'open' %}
+                    <form method="post" action="{% url 'debt-pay' debt.id %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="payment_method" value="DINHEIRO">
+                      <button type="submit" class="btn btn-success">
+                        <i class="mdi mdi-check"></i>
+                      </button>
+                    </form>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="8" class="text-center text-muted">Nenhum débito encontrado.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock pageContent %}
+
+{% block ScriptBlock %}
+{{ block.super }}
+<script>
+  $(function() {
+    const clientSelect = $('#client_id');
+    if (clientSelect.length) {
+      clientSelect.select2({
+        placeholder: 'Digite para buscar o cliente',
+        width: '100%',
+        allowClear: true,
+        language: {
+          noResults: function() { return 'Nenhum cliente encontrado'; },
+          searching: function() { return 'Buscando...'; }
+        }
+      });
+    }
+
+    const resetForm = () => {
+      const form = $('#debt-form');
+      form.trigger('reset');
+      $('#debt_id').val('');
+      $('#debt-form-title').text('Registrar débito');
+      $('#debt-submit').html('<i class="mdi mdi-content-save"></i> Salvar');
+      $('#debt-cancel').addClass('d-none');
+      if (clientSelect.length) {
+        clientSelect.val('').trigger('change');
+      }
+    };
+
+    $('#debt-cancel').on('click', function(event) {
+      event.preventDefault();
+      resetForm();
+    });
+
+    $('[data-debt-edit]').on('click', function() {
+      const button = $(this);
+      $('#debt_id').val(button.data('id'));
+      const clientId = String(button.data('clientId') || '');
+      if (clientSelect.length) {
+        clientSelect.val(clientId).trigger('change');
+      }
+      const amountRaw = button.data('amount');
+      const normalizedAmount = (amountRaw ?? '').toString().replace(',', '.');
+      $('[name="amount"]').val(normalizedAmount);
+      $('[name="due_date"]').val(button.data('dueDate') || '');
+      $('[name="description"]').val(button.data('description') || '');
+      $('#debt-form-title').text('Editar débito');
+      $('#debt-submit').html('<i class="mdi mdi-content-save"></i> Atualizar');
+      $('#debt-cancel').removeClass('d-none');
+      const form = document.getElementById('debt-form');
+      if (form) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+</script>
+{% endblock ScriptBlock %}

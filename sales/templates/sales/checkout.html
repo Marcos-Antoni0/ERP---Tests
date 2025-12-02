@@ -1,0 +1,426 @@
+{% load humanize %}
+<div class="container-fluid">
+    <form action="" id="checkout-form">
+        <div class="form-group mb-3">
+            <label for="payable_amount" class="control-label">Valor a pagar</label>
+            <input type="text" id="payable_amount" class="form-control form-control-lg rounded-0 text-end" value="{{ grand_total|intcomma }}" disabled>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-group mb-3">
+                    <label for="sale-type" class="control-label">Tipo de operação</label>
+                    <select id="sale-type" name="type" class="form-control form-control-lg rounded-0">
+                        <option value="venda" selected>Venda</option>
+                        <option value="pedido">Pedido (Delivery)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group mb-3">
+                    <label for="customer_name" class="control-label">Nome do cliente (opcional)</label>
+                    <input type="text" id="customer_name" name="customer_name" class="form-control form-control-lg rounded-0" placeholder="Insira o nome do cliente">
+                </div>
+            </div>
+        </div>
+        <div class="card mb-3 border border-warning" id="register-debt-wrapper">
+            <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-bold">Venda a prazo</span>
+                            <i class="mdi mdi-information text-primary" role="button" tabindex="0" data-bs-toggle="tooltip" data-bs-placement="top" title="Use quando o cliente deixar saldo pendente. O valor em aberto vira um débito atrelado ao cliente."></i>
+                        </div>
+                        <div class="small text-muted">Permite concluir com valor pendente e gerar débito vinculado ao cliente.</div>
+                    </div>
+                    <div class="form-check form-switch mt-1">
+                        <input class="form-check-input" type="checkbox" value="1" id="register_debt">
+                        <label class="form-check-label fw-semibold" for="register_debt">
+                            Registrar como débito
+                        </label>
+                    </div>
+                </div>
+                <div id="client-group" class="form-group mb-2">
+                    <label for="client_id" class="control-label d-flex align-items-center gap-2 mb-1">
+                        Cliente (para vincular venda/débito)
+                        <span class="badge bg-warning text-dark small fw-semibold d-none" id="client-required-badge">Obrigatório a prazo</span>
+                    </label>
+                    <select id="client_id" name="client_id" class="form-control form-control-lg rounded-0">
+                        <option value="">Selecione um cliente</option>
+                        {% for client in clients %}
+                        <option value="{{ client.id }}">{{ client.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="small text-muted">Selecione o cliente ao registrar venda a prazo.</div>
+                    <div class="alert alert-warning py-2 px-3 small mt-2 mb-0 d-none" id="debt-client-reminder">
+                        Para registrar a prazo, escolha um cliente. Caso não tenha cadastrado, cadastre-o em Clientes.
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="multiPaymentGroup" class="mb-3" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="control-label mb-0">Pagamentos registrados</label>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="addPayment">
+                    <i class="mdi mdi-plus"></i> Adicionar pagamento
+                </button>
+            </div>
+            <div id="paymentsContainer" class="payment-stack"></div>
+            <small class="text-muted">Inclua uma linha para cada forma de pagamento recebida.</small>
+        </div>
+        <div id="singlePaymentGroup" class="form-group mb-3">
+            <label for="forma_pagamento" class="control-label">Forma de pagamento</label>
+            <select id="forma_pagamento" name="forma_pagamento" class="form-control form-control-lg rounded-0">
+                <option value="PIX">Pix</option>
+                <option value="DINHEIRO">Dinheiro</option>
+                <option value="DEBITO">Débito</option>
+                <option value="CREDITO">Crédito</option>
+            </select>
+        </div>
+        <div id="singleTenderedGroup" class="form-group mb-3">
+            <label for="tendered_amount" class="control-label">Valor pago</label>
+            <input type="number" step="0.01" id="tendered_amount" class="form-control form-control-lg rounded-0 text-end" value="0">
+        </div>
+        <div id="remainingGroup" class="form-group mb-3" style="display:none;">
+            <label for="remaining_amount" class="control-label">Saldo a receber</label>
+            <input type="text" id="remaining_amount" class="form-control form-control-lg rounded-0 text-end" value="0,00" disabled>
+        </div>
+        <div class="form-group mb-3">
+            <label for="payment_change" class="control-label">Troco</label>
+            <input type="text" id="payment_change" class="form-control form-control-lg rounded-0 text-end" value="{{ 0|intcomma }}" disabled>
+        </div>
+        <div id="delivery-address-group" class="form-group mb-3" style="display:none;">
+            <label for="endereco_entrega" class="control-label">Endereço (Entrega)</label>
+            <input type="text" id="endereco_entrega" name="endereco_entrega" class="form-control form-control-lg rounded-0" placeholder="Insira o endereço">
+        </div>
+        <div id="delivery-fee-group" class="form-group mb-3" style="display:none;">
+            <label for="taxa_entrega" class="control-label">Taxa de entrega</label>
+            <input type="number" step="0.01" id="taxa_entrega" name="taxa_entrega" class="form-control form-control-lg rounded-0" placeholder="Insira a taxa de entrega">
+        </div>
+    </form>
+</div>
+<div id="paymentRowTemplate" class="d-none">
+    <div class="payment-row row g-2 align-items-end mb-2">
+        <div class="col-6">
+            <select class="form-select payment-method">
+                <option value="PIX">Pix</option>
+                <option value="DINHEIRO">Dinheiro</option>
+                <option value="DEBITO">Débito</option>
+                <option value="CREDITO">Crédito</option>
+            </select>
+        </div>
+        <div class="col-4">
+            <input type="number" min="0.01" step="0.01" class="form-control payment-amount text-end" placeholder="0,00">
+        </div>
+        <div class="col-2 text-end">
+            <button type="button" class="btn btn-outline-danger btn-sm remove-payment">
+                <i class="mdi mdi-close"></i>
+            </button>
+        </div>
+    </div>
+</div>
+<script>
+    $(function() {
+        const originalPayable = parseFloat("{{ grand_total }}") || 0;
+        const posForm = $('#pos-form');
+        const paymentsContainer = $('#paymentsContainer');
+        const registerDebt = $('#register_debt');
+        const registerDebtWrapper = $('#register-debt-wrapper');
+        const clientSelect = $('#client_id');
+        const clientGroup = $('#client-group');
+        const clientReminder = $('#debt-client-reminder');
+        const clientRequiredBadge = $('#client-required-badge');
+
+        const tooltipElements = document.querySelectorAll('[data-bs-toggle=\"tooltip\"]');
+        tooltipElements.forEach(function(el) {
+            if (window.bootstrap && bootstrap.Tooltip) {
+                new bootstrap.Tooltip(el);
+            } else if (typeof $(el).tooltip === 'function') {
+                $(el).tooltip();
+            }
+        });
+
+        if (clientSelect.length) {
+            clientSelect.select2({
+                placeholder: 'Digite para buscar o cliente',
+                width: '100%',
+                allowClear: true,
+                dropdownParent: $('#uni_modal'),
+                language: {
+                    noResults: function() {
+                        return 'Nenhum cliente encontrado';
+                    },
+                    searching: function() {
+                        return 'Buscando...';
+                    }
+                }
+            });
+        }
+
+        function normalizeNumber(value) {
+            if (value === undefined || value === null) {
+                return 0;
+            }
+            const raw = String(value).trim();
+            if (!raw) {
+                return 0;
+            }
+            const usesComma = raw.includes(',');
+            const sanitized = usesComma ? raw.replace(/\./g, '').replace(',', '.') : raw.replace(/\s/g, '');
+            const parsed = parseFloat(sanitized);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+
+        function formatCurrency(value) {
+            const number = Number(value) || 0;
+            const absValue = Math.abs(number);
+            const formatted = absValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return number < 0 ? `-${formatted}` : formatted;
+        }
+
+        function updateClientRequirement() {
+            const isPedido = $('#sale-type').val() === 'pedido';
+            const needsClient = registerDebt.is(':checked') && !isPedido;
+            clientSelect.prop('required', needsClient);
+            clientGroup.toggleClass('border border-warning rounded-3 shadow-sm', needsClient);
+            clientRequiredBadge.toggleClass('d-none', !needsClient);
+            if (needsClient && !clientSelect.val()) {
+                clientReminder.removeClass('d-none');
+            } else {
+                clientReminder.addClass('d-none');
+            }
+        }
+
+        function updatePayable() {
+            let due = originalPayable;
+            if ($('#sale-type').val() === 'pedido') {
+                const delivery = normalizeNumber($('#taxa_entrega').val());
+                if (delivery > 0) {
+                    due += delivery;
+                }
+            }
+            $('#payable_amount').val(formatCurrency(due));
+            return due;
+        }
+
+        function ensurePaymentRows() {
+            if (paymentsContainer.children('.payment-row').length === 0) {
+                const defaultAmount = registerDebt.is(':checked') ? 0 : updatePayable();
+                addPaymentRow('DINHEIRO', defaultAmount);
+            }
+        }
+
+        function recalcMulti() {
+            ensurePaymentRows();
+            const due = updatePayable();
+            let tendered = 0;
+            paymentsContainer.find('.payment-row').each(function() {
+                const amount = normalizeNumber($(this).find('.payment-amount').val());
+                tendered += amount;
+            });
+            const remaining = Math.max(due - tendered, 0);
+            const change = Math.max(tendered - due, 0);
+            $('#remaining_amount').val(formatCurrency(remaining)).data('raw', remaining);
+            $('#payment_change').val(formatCurrency(change));
+            posForm.find('[name="tendered_amount"]').val(tendered.toFixed(2));
+            posForm.find('[name="amount_change"]').val(change.toFixed(2));
+        }
+
+        function addPaymentRow(method, amount) {
+            const template = $('#paymentRowTemplate .payment-row').first().clone();
+            template.find('.payment-method').val(method || 'PIX');
+            const startingAmount = amount !== undefined ? amount : (registerDebt.is(':checked') ? 0 : undefined);
+            if (startingAmount !== undefined) {
+                template.find('.payment-amount').val((Number(startingAmount) || 0).toFixed(2));
+            }
+            template.find('.payment-method').on('change', recalcMulti);
+            template.find('.payment-amount').on('input', recalcMulti);
+            template.find('.remove-payment').on('click', function() {
+                if (paymentsContainer.children('.payment-row').length === 1) {
+                    template.find('.payment-amount').val('0.00');
+                    recalcMulti();
+                    return;
+                }
+                template.remove();
+                recalcMulti();
+            });
+            paymentsContainer.append(template);
+        }
+
+        $('#addPayment').on('click', function() {
+            const remaining = parseFloat($('#remaining_amount').data('raw')) || 0;
+            const targetAmount = remaining > 0 ? remaining : updatePayable();
+            addPaymentRow('DINHEIRO', targetAmount);
+            recalcMulti();
+        });
+
+        function appendPaymentInputs() {
+            let hasPayment = false;
+            paymentsContainer.find('.payment-row').each(function() {
+                const method = $(this).find('.payment-method').val();
+                const amount = normalizeNumber($(this).find('.payment-amount').val());
+                if (!method || amount <= 0) {
+                    return;
+                }
+                hasPayment = true;
+                $('<input>').attr({ type: 'hidden', name: 'payment_method[]', value: method }).appendTo(posForm);
+                $('<input>').attr({ type: 'hidden', name: 'payment_amount[]', value: amount.toFixed(2) }).appendTo(posForm);
+            });
+            return hasPayment;
+        }
+
+        $('#sale-type').on('change', function() {
+            const isPedido = $(this).val() === 'pedido';
+            $('#delivery-address-group, #delivery-fee-group').toggle(isPedido);
+            $('#endereco_entrega, #taxa_entrega').prop('required', isPedido);
+            $('#singlePaymentGroup, #singleTenderedGroup').hide();
+            $('#multiPaymentGroup, #remainingGroup').show();
+            registerDebtWrapper.toggle(!isPedido);
+            if (isPedido) {
+                registerDebt.prop('checked', false);
+            }
+            paymentsContainer.empty();
+            const defaultAmount = isPedido ? updatePayable() : (registerDebt.is(':checked') ? 0 : updatePayable());
+            addPaymentRow('DINHEIRO', defaultAmount);
+            recalcMulti();
+            updateClientRequirement();
+        }).trigger('change');
+
+        registerDebt.on('change', function() {
+            if ($(this).is(':checked')) {
+                paymentsContainer.find('.payment-amount').val('0.00');
+                clientSelect.trigger('focus');
+            } else {
+                const due = updatePayable();
+                const rows = paymentsContainer.find('.payment-row');
+                const hasPositiveAmount = rows.toArray().some(function(row) {
+                    const value = normalizeNumber($(row).find('.payment-amount').val());
+                    return value > 0;
+                });
+                if (!hasPositiveAmount && rows.length) {
+                    $(rows[0]).find('.payment-amount').val(due.toFixed(2));
+                }
+            }
+            recalcMulti();
+            updateClientRequirement();
+        });
+
+        clientSelect.on('change', updateClientRequirement);
+        $('#taxa_entrega').on('input', recalcMulti);
+
+        updateClientRequirement();
+
+        $('#checkout-form').on('submit', function(e) {
+            e.preventDefault();
+            const saleType = $('#sale-type').val();
+            const shouldRegisterDebt = registerDebt.is(':checked');
+            const discountValue = parseFloat(posForm.find('[name="discount_total"]').val()) || 0;
+            if (discountValue > 0) {
+                const reason = (posForm.find('[name="discount_reason"]').val() || '').trim();
+                if (!reason) {
+                    alert('Informe o motivo do desconto antes de finalizar.');
+                    return false;
+                }
+            }
+
+            posForm.find('input[name="forma_pagamento"]').remove();
+            posForm.find('input[name="endereco_entrega"]').remove();
+            posForm.find('input[name="type"]').remove();
+            posForm.find('input[name="customer_name"]').remove();
+            posForm.find('input[name="taxa_entrega"]').remove();
+            posForm.find('input[name="payment_method[]"]').remove();
+            posForm.find('input[name="payment_amount[]"]').remove();
+
+            if (saleType === 'pedido') {
+                recalcMulti();
+                const remaining = parseFloat($('#remaining_amount').data('raw')) || 0;
+                if (remaining > 0.009) {
+                    alert('Ainda existe valor pendente para receber.');
+                    return false;
+                }
+                const due = updatePayable();
+                posForm.find('[name="grand_total"]').val(due.toFixed(2));
+                const hasPayments = appendPaymentInputs();
+                if (!hasPayments && !shouldRegisterDebt) {
+                    alert('Informe ao menos uma forma de pagamento.');
+                    return false;
+                }
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'forma_pagamento',
+                    value: 'MULTI'
+                }).appendTo(posForm);
+            } else {
+                recalcMulti();
+                const remaining = parseFloat($('#remaining_amount').data('raw')) || 0;
+                if (shouldRegisterDebt && !clientSelect.val()) {
+                    updateClientRequirement();
+                    alert('Selecione um cliente para registrar o débito.');
+                    return false;
+                }
+                if (remaining > 0.009 && !shouldRegisterDebt) {
+                    alert('Ainda existe valor pendente para receber.');
+                    return false;
+                }
+                const due = updatePayable();
+                posForm.find('[name="grand_total"]').val(due.toFixed(2));
+                const hasPayments = appendPaymentInputs();
+                if (!hasPayments && !shouldRegisterDebt) {
+                    alert('Informe ao menos uma forma de pagamento.');
+                    return false;
+                }
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'forma_pagamento',
+                    value: 'MULTI'
+                }).appendTo(posForm);
+            }
+
+            if ($('#customer_name').val()) {
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'customer_name',
+                    value: $('#customer_name').val()
+                }).appendTo(posForm);
+            }
+
+            $('<input>').attr({
+                type: 'hidden',
+                name: 'type',
+                value: saleType
+            }).appendTo(posForm);
+
+            if ($('#endereco_entrega').is(':visible') && $('#endereco_entrega').val()) {
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'endereco_entrega',
+                    value: $('#endereco_entrega').val()
+                }).appendTo(posForm);
+            }
+
+            if ($('#taxa_entrega').is(':visible') && $('#taxa_entrega').val()) {
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'taxa_entrega',
+                    value: $('#taxa_entrega').val()
+                }).appendTo(posForm);
+            }
+
+            if (clientSelect.val()) {
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'client_id',
+                    value: clientSelect.val()
+                }).appendTo(posForm);
+            }
+            if (shouldRegisterDebt) {
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'register_debt',
+                    value: '1'
+                }).appendTo(posForm);
+            }
+
+            posForm.submit();
+        });
+    });
+</script>

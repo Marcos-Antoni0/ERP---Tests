@@ -1,0 +1,236 @@
+<div class="container-fluid">
+    <form action="" id="product-form">
+        <input type="hidden" name="id" value="{% if product and product.pk %}{{ product.pk }}{% endif %}">
+        <div class="form-group mb-3">
+            <label for="code" class="control-label">Código</label>
+            <input type="text" name="code" id="code" class="form-control form-control-sm rounded-0" value="{% if product %}{{ product.code }}{% endif %}" required>
+        </div>
+        <div class="form-group mb-3">
+            <label for="category_id" class="control-label">Categoria</label>
+            <select name="category_id" id="category_id" class="form-select form-select-sm rounded-0" required>
+            {% if not product or not product.category_id %}
+            <option value="" disabled selected></option>
+            {% else %}
+            <option value="" disabled></option>
+            {% endif %}
+            {% for category in categories %}
+                {% if product and product.category_id == category.id %}
+                <option value="{{ category.id }}" selected>{{ category.name }}</option>
+                {% else %}
+                <option value="{{ category.id }}">{{ category.name }}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+        </div>
+        <div class="form-group mb-3">
+            <label for="name" class="control-label">Nome do Produto</label>
+            <input type="text" name="name" id="name" class="form-control form-control-sm rounded-0" value="{% if product %}{{ product.name }}{% endif %}" required>
+        </div>
+        <div class="form-group mb-3">
+            <label for="description" class="control-label">Descrição</label>
+            <textarea rows="5" name="description" id="description" class="form-control form-control-sm rounded-0" required>{% if product %}{{ product.description }}{% endif %}</textarea>
+        </div>
+        <div class="form-group mb-3">
+            <label for="price" class="control-label">Preço</label>
+            <input type="text" name="price" id="price" class="form-control form-control-sm rounded-0" value="{% if product %}{{ product.price }}{% endif %}" required>
+        </div>
+        <div class="form-group mb-3">
+            <label for="custo" class="control-label">Custo</label>
+            <input
+            type="text"
+            name="custo"
+            id="custo"
+            class="form-control form-control-sm"
+            value="{% if product %}{{ product.custo }}{% endif %}"
+            required>
+        </div>
+        <div class="form-group mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="is_combo" name="is_combo" value="1" {% if product and product.is_combo %}checked{% endif %}>
+                <label class="form-check-label" for="is_combo">Produto é um combo</label>
+            </div>
+            <small class="text-muted">Combos consomem diversos produtos do estoque ao mesmo tempo.</small>
+        </div>
+        <div id="combo-fields" class="border rounded p-3 bg-light mb-3 {% if not product or not product.is_combo %}d-none{% endif %}">
+            <div class="alert alert-info py-2">
+                Configure os itens que compõem o combo. A quantidade informada é consumida para cada unidade vendida.
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label for="combo_total_quantity" class="form-label">Quantidade total por combo</label>
+                    <input type="number" step="0.01" min="0" class="form-control form-control-sm" id="combo_total_quantity" name="combo_total_quantity" value="{% if product and product.combo_total_quantity %}{{ product.combo_total_quantity }}{% endif %}" placeholder="Ex.: 30">
+                    <small class="text-muted">Use quando o combo possuir quantidade total fixa (ex.: 30 unidades).</small>
+                </div>
+                <div class="col-md-6">
+                    <label for="combo_max_flavors" class="form-label">Máximo de sabores</label>
+                    <input type="number" min="0" class="form-control form-control-sm" id="combo_max_flavors" name="combo_max_flavors" value="{% if product and product.combo_max_flavors %}{{ product.combo_max_flavors }}{% endif %}" placeholder="Ex.: 3">
+                    <small class="text-muted">Informe 0 ou deixe vazio para não limitar a variedade.</small>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Componentes do Combo</h6>
+                <button class="btn btn-sm btn-outline-primary" type="button" id="add_combo_component"><i class="mdi mdi-plus"></i> Adicionar produto</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle" id="combo-components-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 55%;">Produto</th>
+                            <th style="width: 30%; min-width: 180px;" class="text-center">Quantidade padrão</th>
+                            <th style="width: 15%;" class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="form-group mb-3">
+            <label for="status" class="control-label">Status</label>
+            <select name="status" id="status" class="form-select form-select-sm rounded-0" required>
+            {% if product and product.status == 1 %}
+            <option value="1" selected>Ativo</option>
+            {% else %}
+            <option value="1">Ativo</option>
+            {% endif %}
+
+            {% if product and product.status == 0 %}
+            <option value="0" selected>Inativo</option>
+            {% else %}
+            <option value="0">Inativo</option>
+            {% endif %}
+        </select>
+        </div>
+    </form>
+</div>
+<script>
+    $(function() {
+        var comboItemsElement = document.getElementById('combo-items-data');
+        var existingComboItems = [];
+        if (comboItemsElement) {
+            try {
+                existingComboItems = JSON.parse(comboItemsElement.textContent);
+            } catch (err) {
+                existingComboItems = [];
+            }
+        }
+
+        const comboTableBody = $('#combo-components-table tbody');
+
+        function bindRowEvents(row) {
+            row.find('.remove-combo-component').click(function() {
+                row.remove();
+            });
+        }
+
+        function addComboComponentRow(componentId, quantity) {
+            const row = $($('noscript#combo-component-row-template').html()).clone();
+            if (componentId) {
+                row.find('select[name="combo_component_id[]"]').val(String(componentId));
+            }
+            if (typeof quantity !== 'undefined') {
+                row.find('input[name="combo_component_qty[]"]').val(quantity);
+            }
+            bindRowEvents(row);
+            comboTableBody.append(row);
+        }
+
+        $('#add_combo_component').click(function() {
+            addComboComponentRow();
+        });
+
+        $('#is_combo').change(function() {
+            if ($(this).is(':checked')) {
+                $('#combo-fields').removeClass('d-none');
+                if (comboTableBody.children().length === 0) {
+                    addComboComponentRow();
+                }
+            } else {
+                $('#combo-fields').addClass('d-none');
+            }
+        });
+
+        if ($('#is_combo').is(':checked')) {
+            if (existingComboItems.length > 0) {
+                existingComboItems.forEach(function(item) {
+                    addComboComponentRow(item.component_id, item.quantity);
+                });
+            } else {
+                addComboComponentRow();
+            }
+        }
+
+        $('#product-form').submit(function(e) {
+            e.preventDefault();
+            var _this = $(this)
+            $('.err-msg').remove();
+            var el = $('<div>')
+            el.addClass("alert alert-danger err-msg")
+            el.hide()
+            if (_this[0].checkValidity() == false) {
+                _this[0].reportValidity();
+                return false;
+            }
+            start_loader();
+            $.ajax({
+                headers: {
+                    "X-CSRFToken": '{{csrf_token}}'
+                },
+                url: "{% url 'save-product-page' %}",
+                data: new FormData($(this)[0]),
+                cache: false,
+                contentType: false,
+                processData: false,
+                method: 'POST',
+                type: 'POST',
+                dataType: 'json',
+                error: err => {
+                    console.log(err)
+                    end_loader();
+                },
+                success: function(resp) {
+                    if (typeof resp == 'object' && resp.status == 'success') {
+                        el.removeClass("alert alert-danger err-msg")
+                        location.reload()
+                    } else if (resp.status == 'failed' && !!resp.msg) {
+                        el.text(resp.msg)
+                    } else {
+                        el.text("Ocorreu um erro", 'error');
+                        end_loader();
+                        console.err(resp)
+                    }
+                    _this.prepend(el)
+                    el.show('slow')
+                    $("html, body, .modal").scrollTop(0);
+                    end_loader()
+                }
+            })
+        })
+    })
+</script>
+{% if combo_items %}
+    {{ combo_items|json_script:"combo-items-data" }}
+{% else %}
+    <script type="application/json" id="combo-items-data">[]</script>
+{% endif %}
+<noscript id="combo-component-row-template">
+    <tr>
+        <td>
+            <select name="combo_component_id[]" class="form-select form-select-sm combo-component-select" required>
+                <option value="">Selecione um produto</option>
+                {% for component in component_products %}
+                    <option value="{{ component.id }}">{{ component.code }} - {{ component.name }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td class="text-center" style="min-width: 180px;">
+            <div class="input-group input-group-sm w-100">
+                <input type="number" name="combo_component_qty[]" min="0" step="0.01" class="form-control text-end" value="0">
+                <span class="input-group-text">un/combo</span>
+            </div>
+        </td>
+        <td class="text-center">
+            <button class="btn btn-outline-danger btn-sm remove-combo-component" type="button"><i class="mdi mdi-close"></i></button>
+        </td>
+    </tr>
+</noscript>

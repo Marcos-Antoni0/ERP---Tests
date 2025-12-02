@@ -1,0 +1,89 @@
+{% load static %}
+
+<aside class="mdc-drawer mdc-drawer--dismissible mdc-drawer--open bg-dark bg-gradient">
+  <div class="mdc-drawer__header border-bottom border-light">
+    <a href="{% url 'home-page' %}" class="brand-logo">
+      <h3 class="text-center text-light">ERP FortTech</h3>
+    </a>
+  </div>
+  <div class="mdc-drawer__content">
+    <nav class="mdc-list mdc-drawer-menu">
+      {% with current=request.resolver_match.url_name %}
+
+      <div class="mdc-list-item mdc-drawer-item {% if current == 'home-page' %}mdc-list-item--activated{% endif %}">
+        <a class="mdc-drawer-link" href="{% url 'home-page' %}">
+          <i class="material-icons mdc-list-item__start-detail mdc-drawer-item-icon">home</i> Início
+        </a>
+      </div>
+      
+      <div class="mdc-list-item mdc-drawer-item {% if current == 'category-page' %}mdc-list-item--activated{% endif %}">
+        <a class="mdc-drawer-link" href="{% url 'category-page' %}">
+          <i class="material-icons mdc-list-item__start-detail mdc-drawer-item-icon">list</i> Lista de Categorias
+        </a>
+      </div>
+      
+      <div class="mdc-list-item mdc-drawer-item {% if current == 'product-page' %}mdc-list-item--activated{% endif %}">
+        <a class="mdc-drawer-link" href="{% url 'product-page' %}">
+          <i class="material-icons mdc-list-item__start-detail mdc-drawer-item-icon">label</i> Lista de Produtos
+        </a>
+      </div>
+
+      <div class="mdc-list-item mdc-drawer-item {% if current == 'mesas' or current == 'mesa-detalhe' %}mdc-list-item--activated{% endif %}">
+        <a class="mdc-drawer-link" href="{% url 'mesas' %}">
+          <i class="material-icons mdc-list-item__start-detail mdc-drawer-item-icon">restaurant_menu</i>
+          <span class="mdc-drawer-label">Mesas</span>
+        </a>
+      </div>
+
+      <div class="mdc-list-item mdc-drawer-item {% if current == 'cashier' %}mdc-list-item--activated{% endif %}">
+        <a class="mdc-drawer-link" href="{% url 'cashier' %}">
+          <i class="material-icons mdc-list-item__start-detail mdc-drawer-item-icon">payment</i> Caixa
+        </a>
+      </div>
+
+      <div class="mdc-list-item mdc-drawer-item {% if current == 'sales_report' %}mdc-list-item--activated{% endif %}">
+        <a class="mdc-drawer-link" href="{% url 'sales_report' %}">
+          <i class="material-icons mdc-list-item__start-detail mdc-drawer-item-icon">assessment</i> Relatório de Vendas
+        </a>
+      </div>
+      
+      <div class="mdc-list-item mdc-drawer-item {% if current == 'pedidos' %}mdc-list-item--activated{% endif %}">
+        <a class="mdc-drawer-link" href="{% url 'pedidos' %}">
+          <i class="material-icons mdc-list-item__start-detail mdc-drawer-item-icon">shopping_basket</i> Pedidos
+        </a>
+      </div>
+
+      <div class="mdc-list-item mdc-drawer-item {% if current == 'estoque' %}mdc-list-item--activated{% endif %}">
+        <a class="mdc-drawer-link" href="{% url 'estoque' %}">
+          <i class="material-icons mdc-list-item__start-detail mdc-drawer-item-icon">archive</i> Estoque
+        </a>
+      </div>
+      
+      <div class="mdc-list-item mdc-drawer-item {% if current == 'sales-page' %}mdc-list-item--activated{% endif %}">
+        <a class="mdc-drawer-link" href="{% url 'sales-page' %}">
+          <i class="material-icons mdc-list-item__start-detail mdc-drawer-item-icon">receipt</i> Vendas
+        </a>
+      </div>
+
+      <div class="mdc-list-item mdc-drawer-item {% if current == 'clients-list' %}mdc-list-item--activated{% endif %}">
+        <a class="mdc-drawer-link" href="{% url 'clients-list' %}">
+          <i class="material-icons mdc-list-item__start-detail mdc-drawer-item-icon">person</i> Clientes
+        </a>
+      </div>
+
+      <div class="mdc-list-item mdc-drawer-item {% if current == 'debts-list' %}mdc-list-item--activated{% endif %}">
+        <a class="mdc-drawer-link" href="{% url 'debts-list' %}">
+          <i class="material-icons mdc-list-item__start-detail mdc-drawer-item-icon">account_balance</i> Débitos
+        </a>
+      </div>
+      
+      <div class="mdc-list-item mdc-drawer-item {% if current == 'configuracoes-page' %}mdc-list-item--activated{% endif %}">
+        <a class="mdc-drawer-link" href="{% url 'configuracoes-page' %}">
+          <i class="material-icons mdc-list-item__start-detail mdc-drawer-item-icon">settings</i> Configurações
+        </a>
+      </div>
+      
+      {% endwith %}
+    </nav>
+  </div>
+</aside>

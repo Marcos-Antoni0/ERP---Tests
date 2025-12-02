@@ -1,0 +1,215 @@
+{% extends "core/base.html" %}
+{% block pageContent %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+  <div class="mdc-card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h4 class="card-title mb-1">Clientes</h4>
+        <p class="text-muted mb-0">Cadastre clientes, edite dados e acompanhe consumo e débitos pendentes.</p>
+      </div>
+      <form method="get" class="d-flex gap-2">
+        <input
+          type="text"
+          name="q"
+          value="{{ search_term|default:'' }}"
+          class="form-control form-control-sm"
+          placeholder="Buscar por nome"
+          aria-label="Buscar cliente por nome"
+        >
+        <button type="submit" class="btn btn-outline-primary btn-sm">
+          <i class="mdi mdi-magnify"></i> Buscar
+        </button>
+        {% if search_term %}
+        <a href="{% url 'clients-list' %}" class="btn btn-link btn-sm text-muted">Limpar</a>
+        {% endif %}
+      </form>
+    </div>
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">
+        <div class="alert alert-primary h-100 mb-0">
+          <div class="fw-bold">Total de clientes</div>
+          <div class="display-6">{{ stats.total_clients|default:0 }}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="alert alert-success h-100 mb-0">
+          <div class="fw-bold">Consumo acumulado</div>
+          <div class="display-6">R$ {{ stats.consumption_total|default:0|floatformat:2 }}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="alert alert-warning h-100 mb-0">
+          <div class="fw-bold">Débitos pendentes</div>
+          <div class="display-6">R$ {{ stats.pending_total|default:0|floatformat:2 }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-lg-4">
+        <form method="post" class="border rounded p-3 bg-light" id="client-form">
+          {% csrf_token %}
+          <input type="hidden" name="client_id" id="client_id">
+          <h6 class="mb-3" id="client-form-title">Novo cliente</h6>
+          <div class="mb-2">
+            <label class="form-label">Nome*</label>
+            <input type="text" name="name" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">CPF</label>
+            <input type="text" name="cpf" class="form-control form-control-sm" placeholder="Somente números">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Telefone</label>
+            <input type="text" name="phone" class="form-control form-control-sm">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Endereço</label>
+            <textarea name="address" class="form-control form-control-sm" rows="2"></textarea>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <button type="button" class="btn btn-link btn-sm text-danger px-0 d-none" id="cancel-edit">
+              Cancelar edição
+            </button>
+            <button type="submit" class="btn btn-primary btn-sm" id="client-submit">
+              <i class="mdi mdi-content-save"></i> Salvar
+            </button>
+          </div>
+        </form>
+      </div>
+      <div class="col-lg-8">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>CPF</th>
+                <th>Contato</th>
+                <th>Consumo</th>
+                <th>Débito</th>
+                <th class="text-end">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for client in clients %}
+              <tr>
+                <td>{{ client.name }}</td>
+                <td class="small text-muted">{{ client.cpf|default:"-" }}</td>
+                <td>
+                  <div class="small text-muted">Telefone: {{ client.phone|default:"-" }}</div>
+                  <div class="small text-muted">Endereço: {{ client.address|default:"-" }}</div>
+                </td>
+                <td>R$ {{ client.total_consumption|default:0|floatformat:2 }}</td>
+                <td>
+                  {% if client.pending_debt_total > 0 %}
+                    <span class="badge bg-warning text-dark">R$ {{ client.pending_debt_total|floatformat:2 }}</span>
+                  {% else %}
+                    <span class="badge bg-success">Sem débito</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    data-client-edit
+                    data-id="{{ client.id }}"
+                    data-name="{{ client.name }}"
+                    data-cpf="{{ client.cpf|default_if_none:'' }}"
+                    data-phone="{{ client.phone|default_if_none:'' }}"
+                    data-address="{{ client.address|default_if_none:'' }}"
+                  >
+                    <i class="mdi mdi-pencil"></i> Editar
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-outline-danger btn-sm ms-2"
+                    data-client-delete
+                    data-id="{{ client.id }}"
+                    data-name="{{ client.name }}"
+                  >
+                    <i class="mdi mdi-delete"></i> Excluir
+                  </button>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="6" class="text-center text-muted">Nenhum cliente cadastrado.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock pageContent %}
+
+{% block ScriptBlock %}
+{{ block.super }}
+<form method="post" id="client-delete-form" class="d-none">
+  {% csrf_token %}
+  <input type="hidden" name="client_id" id="delete_client_id">
+  <input type="hidden" name="action" value="delete">
+</form>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('client-form');
+    if (!form) {
+      return;
+    }
+
+    const clientIdInput = document.getElementById('client_id');
+    const titleEl = document.getElementById('client-form-title');
+    const submitBtn = document.getElementById('client-submit');
+    const cancelBtn = document.getElementById('cancel-edit');
+    const deleteForm = document.getElementById('client-delete-form');
+    const deleteInput = document.getElementById('delete_client_id');
+
+    const resetForm = () => {
+      form.reset();
+      clientIdInput.value = '';
+      titleEl.textContent = 'Novo cliente';
+      submitBtn.innerHTML = '<i class="mdi mdi-content-save"></i> Salvar';
+      if (cancelBtn) {
+        cancelBtn.classList.add('d-none');
+      }
+    };
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', function(event) {
+        event.preventDefault();
+        resetForm();
+      });
+    }
+
+    document.querySelectorAll('[data-client-edit]').forEach(function(button) {
+      button.addEventListener('click', function() {
+        form.name.value = this.dataset.name || '';
+        form.cpf.value = this.dataset.cpf || '';
+        form.phone.value = this.dataset.phone || '';
+        form.address.value = this.dataset.address || '';
+        clientIdInput.value = this.dataset.id || '';
+        titleEl.textContent = 'Editar cliente';
+        submitBtn.innerHTML = '<i class="mdi mdi-content-save"></i> Atualizar';
+        if (cancelBtn) {
+          cancelBtn.classList.remove('d-none');
+        }
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    document.querySelectorAll('[data-client-delete]').forEach(function(button) {
+      button.addEventListener('click', function() {
+        const id = this.dataset.id;
+        const name = this.dataset.name || 'este cliente';
+        const confirmed = window.confirm(`Excluir ${name}? Esta ação também remove débitos associados.`);
+        if (!confirmed || !deleteForm || !deleteInput) {
+          return;
+        }
+        deleteInput.value = id;
+        deleteForm.submit();
+      });
+    });
+  });
+</script>
+{% endblock ScriptBlock %}

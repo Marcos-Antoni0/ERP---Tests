@@ -1,0 +1,780 @@
+{% extends 'core/base.html' %}
+
+{% block pageContent %}
+<style>
+  .stretch-card > .card {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+
+  .mesa-cards-scroll {
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+  }
+
+  .mesa-cards-scroll::-webkit-scrollbar {
+    width: 0.45rem;
+  }
+
+  .mesa-cards-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(15, 23, 42, 0.18);
+    border-radius: 999px;
+  }
+
+  .mesa-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .mesa-card {
+    border-radius: 0.75rem;
+    padding: 1rem 0.75rem;
+    text-align: center;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    min-height: 120px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
+  }
+
+  .mesa-card--free {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+  }
+
+  .mesa-card--occupied {
+    background: linear-gradient(135deg, #f97316, #ea580c);
+  }
+
+  .mesa-card--inactive {
+    background: linear-gradient(135deg, #94a3b8, #64748b);
+  }
+
+  .mesa-card__number {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .mesa-card__status {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 0.2rem 0.85rem;
+    background-color: rgba(255, 255, 255, 0.18);
+  }
+
+  .mesa-card .btn {
+    border-radius: 999px;
+    font-weight: 600;
+    padding-inline: 1.25rem;
+  }
+
+  .mesa-summary-scroll {
+    max-height: 260px;
+    overflow-y: auto;
+    padding-right: 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .mesa-summary-scroll::-webkit-scrollbar {
+    width: 0.4rem;
+  }
+
+  .mesa-summary-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(15, 23, 42, 0.18);
+    border-radius: 999px;
+  }
+
+  .mesa-summary__item {
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 0.9rem;
+    padding: 0.85rem;
+    background: linear-gradient(180deg, rgba(241, 245, 249, 0.9), #ffffff);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .mesa-summary__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .mesa-summary__title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .mesa-summary__meta {
+    display: block;
+    font-size: 0.75rem;
+    color: #64748b;
+  }
+
+  .mesa-summary__total {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 0.95rem;
+    white-space: nowrap;
+  }
+
+  .mesa-summary__button .btn {
+    width: 100%;
+    border-radius: 0.75rem;
+    font-weight: 600;
+  }
+
+  .availability-list {
+    max-height: 260px;
+    overflow-y: auto;
+    padding-right: 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .availability-list::-webkit-scrollbar {
+    width: 0.4rem;
+  }
+
+  .availability-list::-webkit-scrollbar-thumb {
+    background-color: rgba(15, 23, 42, 0.18);
+    border-radius: 999px;
+  }
+
+  .availability-search {
+    max-width: 180px;
+  }
+
+  .availability-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.6rem 0.85rem;
+    border-radius: 0.85rem;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background-color: rgba(248, 250, 252, 0.9);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .availability-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 18px -12px rgba(15, 23, 42, 0.4);
+  }
+
+  .availability-item span {
+    font-weight: 600;
+    color: #0f172a;
+  }
+
+  .availability-empty {
+    border-radius: 0.75rem;
+    border: 1px dashed rgba(148, 163, 184, 0.6);
+    padding: 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .availability-item .btn {
+    white-space: nowrap;
+    border-radius: 999px;
+  }
+
+  .mesa-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .mesa-toolbar__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .mesa-toolbar__icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #fff;
+    box-shadow: 0 10px 25px -12px rgba(37, 99, 235, 0.8);
+    font-size: 1.6rem;
+  }
+
+  .mesa-toolbar__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.35rem;
+  }
+
+  .mesa-toolbar__subtitle {
+    color: #64748b;
+    margin-bottom: 0;
+  }
+
+  .mesa-toolbar__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .mesa-toolbar__actions form .input-group {
+    border-radius: 0.85rem;
+    overflow: hidden;
+    box-shadow: 0 12px 24px -18px rgba(15, 23, 42, 0.55);
+  }
+
+  .mesa-toolbar__actions form .input-group-text {
+    background: #e2e8f0;
+    border: 0;
+    justify-content: center;
+    color: #1d4ed8;
+    font-size: 1.3rem;
+  }
+
+  .mesa-toolbar__actions .form-control {
+    border: 0;
+    background: #f8fafc;
+    padding: 0.85rem 1rem;
+    color: #0f172a;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    caret-color: #2563eb;
+  }
+
+  .mesa-toolbar__actions .form-control::placeholder {
+    color: #94a3b8;
+  }
+
+  .mesa-toolbar__actions .form-control:-webkit-autofill,
+  .mesa-toolbar__actions .form-control:-webkit-autofill:focus {
+    -webkit-text-fill-color: #0f172a;
+    transition: background-color 9999s ease-in-out 0s;
+  }
+
+  .mesa-toolbar__actions form .btn {
+    border: 0;
+    border-radius: 0;
+    font-weight: 600;
+  }
+
+  .mesa-toolbar__actions .btn-add-table {
+    align-self: flex-start;
+    border-radius: 0.85rem;
+    padding-inline: 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .mesa-toolbar__actions .btn-add-table .material-icons {
+    font-size: 1.3rem;
+  }
+
+  .mesa-insight-stack {
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+  }
+
+  .mesa-insight-stack > .card {
+    width: 100%;
+    margin-bottom: 0;
+  }
+
+  @media (max-width: 767.98px) {
+    .mesa-toolbar__actions {
+      width: 100%;
+    }
+
+    .mesa-toolbar__actions form {
+      width: 100%;
+    }
+
+    .mesa-toolbar__actions form .input-group {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+      box-shadow: none;
+      border-radius: 0;
+      overflow: visible;
+      width: 100%;
+    }
+
+    .mesa-toolbar__actions form .input-group-text {
+      width: 100%;
+      border-radius: 0.85rem;
+      font-size: 1.1rem;
+      padding-block: 0.85rem;
+    }
+
+    .mesa-toolbar__actions .form-control {
+      border-radius: 0.85rem;
+      background: #ffffff;
+      color: #0f172a !important;
+      box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.45);
+      padding: 1.05rem 1.15rem;
+      font-size: 1.05rem;
+      min-height: 3.25rem;
+      width: 100%;
+    }
+
+    .mesa-toolbar__actions .form-control::placeholder {
+      color: rgba(100, 116, 139, 0.8);
+    }
+
+    .mesa-toolbar__actions form .btn {
+      border-radius: 0.85rem;
+      width: 100%;
+      padding: 1rem;
+      font-size: 1.05rem;
+    }
+
+    .mesa-toolbar__actions .btn-add-table {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .mesa-grid {
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+
+    .mesa-card {
+      min-height: 100px;
+      padding: 0.75rem;
+    }
+
+    .mesa-summary-scroll {
+      max-height: none;
+      padding-right: 0;
+    }
+
+    .availability-list {
+      max-height: none;
+      padding-right: 0;
+    }
+
+    .availability-item {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .availability-item .btn {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .mesa-toolbar {
+      align-items: stretch;
+    }
+  }
+</style>
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+  <div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+      <div class="mesa-toolbar">
+        <div class="mesa-toolbar__header">
+          <span class="mesa-toolbar__icon">
+            <i class="material-icons">table_restaurant</i>
+          </span>
+          <div>
+            <h1 class="mesa-toolbar__title">Controle de Mesas e Comandas</h1>
+            <p class="mesa-toolbar__subtitle">Gerencie ocupação, comandas e itens disponíveis em poucos cliques.</p>
+          </div>
+        </div>
+        <div class="mesa-toolbar__actions">
+          <form method="get" action="{% url 'mesas' %}">
+            <div class="input-group">
+              <span class="input-group-text">
+                <i class="material-icons">search</i>
+              </span>
+              <input type="text" class="form-control" name="table_number" placeholder="Digite o número da mesa" aria-label="Buscar mesa" required {% if not tables_ready %}disabled{% endif %}>
+              <button type="submit" class="btn btn-primary" {% if not tables_ready %}disabled{% endif %}>
+                Buscar mesa
+              </button>
+            </div>
+          </form>
+            <button class="btn btn-success btn-add-table" data-bs-toggle="modal" data-bs-target="#tableModal" data-mode="create" {% if not tables_ready %}disabled{% endif %}>
+              <i class="material-icons">add</i>
+              Nova mesa
+            </button>
+          <a class="btn btn-outline-secondary btn-add-table" href="{% url 'garcons' %}">
+            <i class="material-icons">groups</i>
+            Gerenciar garçons
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if not tables_ready %}
+  <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+    <div class="alert alert-warning border-0 shadow-sm mb-4" role="alert">
+      <div class="d-flex align-items-center gap-3">
+        <i class="material-icons text-warning fs-2">warning</i>
+        <div>
+          <h4 class="alert-heading h6 fw-bold mb-1">Migração necessária</h4>
+          <p class="mb-0">Execute <code>python manage.py migrate</code> para criar as tabelas de mesas e comandas antes de utilizar esta tela.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+{% if tables_ready and not has_waiters %}
+  <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+    <div class="alert alert-info border-0 shadow-sm mb-4" role="alert">
+      <div class="d-flex align-items-center gap-3">
+        <i class="material-icons text-info fs-2">support_agent</i>
+        <div>
+          <h4 class="alert-heading h6 fw-bold mb-1">Cadastre seus garçons</h4>
+          <p class="mb-0">Nenhum garçom ativo foi encontrado. Cadastre a equipe de atendimento na <a href="{% url 'garcons' %}" class="alert-link">tela de Garçons</a> para abrir novas comandas.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+{% if tables_ready and not cash_session_open %}
+  <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+    <div class="alert alert-warning border-0 shadow-sm mb-4" role="alert">
+      <div class="d-flex align-items-center gap-3">
+        <i class="material-icons text-warning fs-2">point_of_sale</i>
+        <div>
+          <h4 class="alert-heading h6 fw-bold mb-1">Caixa fechado</h4>
+          <p class="mb-0">Abra um caixa na <a href="{% url 'cashier' %}" class="alert-link">gestão de caixa</a> para iniciar novas comandas.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12 mdc-layout-grid__cell--span-8-desktop col-12 col-lg-8">
+  <div class="card shadow-sm border-0 h-100">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h3 class="h5 mb-0 fw-bold">Visão geral das mesas</h3>
+      <span class="badge rounded-pill bg-light text-dark fw-normal">{{ tables|length }} mesas cadastradas</span>
+    </div>
+    <div class="card-body">
+      {% if tables %}
+        <div class="mesa-cards-scroll">
+          <div class="mesa-grid">
+            {% for table in tables %}
+              <article class="mesa-card {% if not table.is_active %}mesa-card--inactive{% elif table.open_order %}mesa-card--occupied{% else %}mesa-card--free{% endif %}">
+                <span class="mesa-card__status">
+                  {% if not table.is_active %}Inativa{% elif table.open_order %}Ocupada{% else %}Livre{% endif %}
+                </span>
+                <div class="mesa-card__number">Mesa {{ table.number }}</div>
+                <a href="{% url 'mesa-detalhe' table.id %}" class="btn btn-light btn-sm">Acessar</a>
+              </article>
+            {% endfor %}
+          </div>
+        </div>
+      {% else %}
+        <p class="text-muted mb-0">Nenhuma mesa cadastrada até o momento.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="mdc-layout-grid__cell stretch-card mesa-insight-stack mdc-layout-grid__cell--span-12 mdc-layout-grid__cell--span-4-desktop col-12 col-lg-4">
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3">
+      <h3 class="h6 mb-0 fw-bold">Comandas abertas</h3>
+    </div>
+    <div class="card-body">
+      {% if open_orders %}
+        <div class="mesa-summary-scroll">
+          {% for order in open_orders %}
+            <article class="mesa-summary__item">
+              <div class="mesa-summary__top">
+                <div>
+                  <span class="mesa-summary__title">Mesa {{ order.table.number }}</span>
+                  <span class="mesa-summary__meta">Desde {{ order.opened_at|date:"d/m H:i" }}</span>
+                  <span class="mesa-summary__meta">Garçom: {{ order.waiter_name|default:"-" }}</span>
+                </div>
+                <span class="mesa-summary__total">R$ {{ order.total|floatformat:2 }}</span>
+              </div>
+              <div class="mesa-summary__button">
+                <a href="{% url 'mesa-detalhe' order.table.id %}" class="btn btn-primary btn-sm">Ir para a mesa</a>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-muted mb-0">Nenhuma comanda aberta no momento.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3">
+      <h3 class="h6 mb-0 fw-bold">Últimas comandas fechadas</h3>
+    </div>
+    <div class="card-body">
+      {% if recent_orders %}
+        <div class="mesa-summary-scroll">
+          {% for order in recent_orders %}
+            <article class="mesa-summary__item">
+              <div class="mesa-summary__top">
+                <div>
+                  <span class="mesa-summary__title">Mesa {{ order.table.number }}</span>
+                  <span class="mesa-summary__meta">{{ order.get_status_display }} em {{ order.closed_at|default:order.opened_at|date:"d/m H:i" }}</span>
+                  <span class="mesa-summary__meta">Garçom: {{ order.waiter_name|default:"-" }}</span>
+                </div>
+                <span class="mesa-summary__total">R$ {{ order.total|floatformat:2 }}</span>
+              </div>
+              <div class="mesa-summary__button">
+                <a href="{% url 'mesa-detalhe' order.table.id %}" class="btn btn-outline-secondary btn-sm">Ver detalhes</a>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-muted mb-0">Nenhuma comanda finalizada recentemente.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3">
+      <h3 class="h6 mb-0 fw-bold">Disponibilidade dos itens</h3>
+    </div>
+    <div class="card-body">
+      <p class="text-muted">Desative itens indisponíveis para que os garçons não possam selecioná-los.</p>
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <div class="d-flex align-items-center justify-content-between mb-2 gap-2">
+            <h6 class="text-success fw-bold text-uppercase small mb-0">Disponíveis</h6>
+            <input type="search" class="form-control form-control-sm availability-search" data-target="#available-products" placeholder="Filtrar" aria-label="Filtrar itens disponíveis">
+          </div>
+          <div class="availability-list" id="available-products">
+            <div class="availability-empty text-muted text-center {% if available_products %}d-none{% endif %}" data-empty-default>Nenhum item disponível.</div>
+            <div class="availability-empty text-muted text-center d-none" data-empty-search>Nenhum item encontrado.</div>
+            {% for product in available_products %}
+              <form method="post" action="{% url 'toggle_product_availability' product.id %}" class="availability-item" data-product-name="{{ product.name|lower }}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'mesas' %}">
+                <span class="flex-grow-1 text-truncate">{{ product.name }}</span>
+                <button type="submit" class="btn btn-outline-warning btn-sm">Desativar</button>
+              </form>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="d-flex align-items-center justify-content-between mb-2 gap-2">
+            <h6 class="text-danger fw-bold text-uppercase small mb-0">Indisponíveis</h6>
+            <input type="search" class="form-control form-control-sm availability-search" data-target="#unavailable-products" placeholder="Filtrar" aria-label="Filtrar itens indisponíveis">
+          </div>
+          <div class="availability-list" id="unavailable-products">
+            <div class="availability-empty text-muted text-center {% if unavailable_products %}d-none{% endif %}" data-empty-default>Nenhum item bloqueado no momento.</div>
+            <div class="availability-empty text-muted text-center d-none" data-empty-search>Nenhum item encontrado.</div>
+            {% for product in unavailable_products %}
+              <form method="post" action="{% url 'toggle_product_availability' product.id %}" class="availability-item" data-product-name="{{ product.name|lower }}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'mesas' %}">
+                <span class="flex-grow-1 text-truncate">{{ product.name }}</span>
+                <button type="submit" class="btn btn-outline-success btn-sm">Reativar</button>
+              </form>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para criar/editar mesa -->
+<div class="modal fade" id="tableModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="tableForm">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'mesas' %}">
+        <div class="modal-header">
+          <h5 class="modal-title">Nova mesa</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="id_table_number" class="form-label">Número da mesa</label>
+            <input type="number" class="form-control" id="id_table_number" name="number" min="1" required>
+          </div>
+          <div class="mb-3">
+            <label for="id_table_name" class="form-label">Identificação</label>
+            <input type="text" class="form-control" id="id_table_name" name="name" placeholder="Ex: Área externa">
+          </div>
+          <div class="mb-3">
+            <label for="id_table_capacity" class="form-label">Quantidade de lugares</label>
+            <input type="number" class="form-control" id="id_table_capacity" name="capacity" min="1" value="1" required>
+          </div>
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="id_table_active" name="is_active" checked>
+            <label class="form-check-label" for="id_table_active">Mesa ativa</label>
+          </div>
+          <div class="mb-0">
+            <label for="id_table_notes" class="form-label">Observações</label>
+            <textarea class="form-control" id="id_table_notes" name="notes" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmação para excluir mesa -->
+<div class="modal fade" id="deleteTableModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="deleteTableForm">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'mesas' %}">
+        <div class="modal-header">
+          <h5 class="modal-title">Excluir mesa</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p id="deleteTableMessage" class="mb-0">Deseja realmente excluir esta mesa?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger">Excluir</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block ScriptBlock %}
+{{ block.super }}
+<script>
+  const tableModal = document.getElementById('tableModal');
+  if (tableModal) {
+    tableModal.addEventListener('show.bs.modal', event => {
+      const button = event.relatedTarget;
+      const form = tableModal.querySelector('form');
+      form.reset();
+      form.action = "{% url 'salvar_mesa' %}";
+      tableModal.querySelector('.modal-title').textContent = 'Nova mesa';
+      tableModal.querySelector('#id_table_active').checked = true;
+
+      if (button && button.getAttribute('data-mode') === 'edit') {
+        const id = button.getAttribute('data-id');
+        const number = button.getAttribute('data-number');
+        const name = button.getAttribute('data-name') || '';
+        const capacity = button.getAttribute('data-capacity') || '1';
+        const notes = button.getAttribute('data-notes') || '';
+        const active = button.getAttribute('data-active') === '1';
+
+        form.action = `{% url 'atualizar_mesa' 0 %}`.replace('/0/', `/${id}/`);
+        tableModal.querySelector('.modal-title').textContent = 'Editar mesa';
+        form.querySelector('#id_table_number').value = number;
+        form.querySelector('#id_table_name').value = name;
+        form.querySelector('#id_table_capacity').value = capacity;
+        form.querySelector('#id_table_notes').value = notes;
+        tableModal.querySelector('#id_table_active').checked = active;
+      }
+    });
+  }
+
+  const deleteTableModal = document.getElementById('deleteTableModal');
+  if (deleteTableModal) {
+    deleteTableModal.addEventListener('show.bs.modal', event => {
+      const button = event.relatedTarget;
+      const form = deleteTableModal.querySelector('form');
+      const message = deleteTableModal.querySelector('#deleteTableMessage');
+      const id = button.getAttribute('data-id');
+      const label = button.getAttribute('data-label');
+
+      form.action = `{% url 'excluir_mesa' 0 %}`.replace('/0/', `/${id}/`);
+      message.textContent = `Deseja realmente excluir ${label}?`;
+    });
+  }
+
+  function setupAvailabilitySearch(input) {
+    const targetSelector = input.getAttribute('data-target');
+    const list = document.querySelector(targetSelector);
+    if (!list) {
+      return;
+    }
+
+    const items = Array.from(list.querySelectorAll('[data-product-name]'));
+    const defaultPlaceholder = list.querySelector('[data-empty-default]');
+    const searchPlaceholder = list.querySelector('[data-empty-search]');
+
+    const updatePlaceholders = () => {
+      if (!items.length) {
+        if (defaultPlaceholder) {
+          defaultPlaceholder.classList.remove('d-none');
+        }
+        if (searchPlaceholder) {
+          searchPlaceholder.classList.add('d-none');
+        }
+        return;
+      }
+
+      if (defaultPlaceholder) {
+        defaultPlaceholder.classList.add('d-none');
+      }
+      if (searchPlaceholder) {
+        const hasVisible = items.some(item => !item.classList.contains('d-none'));
+        searchPlaceholder.classList.toggle('d-none', hasVisible);
+      }
+    };
+
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+      }
+    });
+
+    input.addEventListener('input', () => {
+      const term = input.value.trim().toLowerCase();
+
+      if (!items.length) {
+        return;
+      }
+
+      items.forEach(item => {
+        const matches = item.dataset.productName.includes(term);
+        item.classList.toggle('d-none', !matches);
+      });
+
+      updatePlaceholders();
+    });
+
+    updatePlaceholders();
+  }
+
+  document.querySelectorAll('.availability-search').forEach(input => {
+    setupAvailabilitySearch(input);
+  });
+</script>
+{% endblock %}

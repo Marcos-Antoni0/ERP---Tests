@@ -1,0 +1,277 @@
+{% load humanize %}
+<style>
+  #uni_modal .modal-footer {
+    display: none;
+  }
+
+  .thermal-shell {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .thermal-wrapper {
+    font-family: 'Arial', 'Helvetica', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    width: 64mm;
+    max-width: 100%;
+    padding: 0 2mm 4mm;
+    margin: 0 auto;
+    color: #000;
+    background: #fff;
+    box-sizing: border-box;
+    -webkit-font-smoothing: none;
+    text-rendering: optimizeSpeed;
+  }
+
+  .thermal-wrapper h6 {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .thermal-divider {
+    border: none;
+    border-top: 1px dashed #000;
+    margin: 6px 0;
+  }
+
+  .thermal-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  .thermal-items {
+    margin-top: 4px;
+  }
+
+  .thermal-items .item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+  }
+
+  .thermal-items .item-name {
+    flex: 1;
+    padding: 0 4px;
+  }
+
+  .thermal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  @page {
+    size: 64mm auto;
+    margin: 0;
+  }
+
+  @media print {
+    html,
+    body {
+      margin: 0;
+      width: 64mm;
+      background: #fff;
+      color: #000;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .thermal-wrapper {
+      box-shadow: none !important;
+    }
+
+    .thermal-actions {
+      display: none !important;
+    }
+  }
+</style>
+
+<div class="thermal-shell">
+  <div class="thermal-wrapper" id="mesa-receipt">
+      <div style="text-align: center; margin-bottom: 6px;">
+        <h6>Recibo de Mesa</h6>
+        <small>Recibo Nao Fiscal</small>
+      </div>
+
+      <hr class="thermal-divider" />
+
+      <div>
+        <div class="thermal-row">
+          <span>Data:</span>
+          <span>{{ sale.date_added|date:"d/m/Y H:i" }}</span>
+        </div>
+        <div class="thermal-row">
+          <span>Mesa:</span>
+          <span>{{ order.table.number }}</span>
+        </div>
+        <div class="thermal-row">
+          <span>Codigo:</span>
+          <span>{{ sale.code }}</span>
+        </div>
+        <div class="thermal-row">
+          <span>Garcom:</span>
+          <span>{{ order.waiter_name|default:"-" }}</span>
+        </div>
+        <div class="thermal-row">
+          <span>Pagamento:</span>
+          <span>{{ sale.get_forma_pagamento_display|default:"N/I" }}</span>
+        </div>
+        {% if payments %}
+        <div class="mt-1">
+          {% for payment in payments %}
+          <div class="thermal-row">
+            <span>{{ payment.method }}</span>
+            <span>R$ {{ payment.applied|floatformat:2 }}</span>
+          </div>
+          {% if payment.tendered != payment.applied or payment.change > 0 %}
+          <div class="thermal-row" style="font-size: 11px;">
+            <span>Recebido</span>
+            <span>R$ {{ payment.tendered|floatformat:2 }}</span>
+          </div>
+          {% if payment.change > 0 %}
+          <div class="thermal-row" style="font-size: 11px;">
+            <span>Troco</span>
+            <span>R$ {{ payment.change|floatformat:2 }}</span>
+          </div>
+          {% endif %}
+          {% endif %}
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <hr class="thermal-divider" />
+
+      <div class="thermal-row" style="font-weight: bold;">
+        <span style="width: 12%;">Qtd</span>
+        <span style="flex: 1; text-align: left;">Produto</span>
+        <span style="width: 30%; text-align: right;">Valor</span>
+      </div>
+
+      <div class="thermal-items">
+        {% for item in items %}
+        <div class="item">
+          <span style="width: 12%;">{{ item.quantity|floatformat:2 }}</span>
+          <span class="item-name">{{ item.product.name }}</span>
+          <span style="width: 30%; text-align: right;">R$ {{ item.total|floatformat:2 }}</span>
+        </div>
+        {% empty %}
+        <div class="item" style="justify-content: center;">
+          Nenhum item registrado.
+        </div>
+        {% endfor %}
+      </div>
+
+      <hr class="thermal-divider" />
+
+      <div class="thermal-row">
+        <span>Subtotal</span>
+        <span>R$ {{ order.subtotal|floatformat:2 }}</span>
+      </div>
+      {% if order.service_charge %}
+      <div class="thermal-row">
+        <span>Taxa de servico ({{ order.service_charge|floatformat:2 }}%)</span>
+        <span>R$ {{ order.service_amount|floatformat:2 }}</span>
+      </div>
+      {% endif %}
+      {% if order.discount_amount %}
+      <div class="thermal-row">
+        <span>Desconto</span>
+        <span>- R$ {{ order.discount_amount|floatformat:2 }}</span>
+      </div>
+      {% if order.discount_reason %}
+      <div class="thermal-row" style="font-size: 11px;">
+        <span>Motivo</span>
+        <span>{{ order.discount_reason }}</span>
+      </div>
+      {% endif %}
+      {% endif %}
+      <div class="thermal-row" style="font-weight: bold;">
+        <span>Total</span>
+        <span>R$ {{ order.total|floatformat:2 }}</span>
+      </div>
+      <div class="thermal-row">
+        <span>Recebido</span>
+        <span>R$ {{ sale.tendered_amount|floatformat:2 }}</span>
+      </div>
+      <div class="thermal-row">
+        <span>Troco</span>
+        <span>R$ {{ sale.amount_change|floatformat:2 }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="thermal-actions">
+    <button id="mesa-receipt-print" class="btn btn-light border rounded-0 btn-sm">
+      <i class="mdi mdi-printer"></i> Imprimir
+    </button>
+    <button class="btn btn-secondary border rounded-0 btn-sm" type="button" data-bs-dismiss="modal">
+      <i class="mdi mdi-close"></i> Fechar
+    </button>
+  </div>
+</div>
+
+<script>
+  const mesaPrintBtn = document.getElementById('mesa-receipt-print');
+
+  function openMesaPrintWindow() {
+    const content = document.getElementById('mesa-receipt').outerHTML;
+    const printWindow = window.open('', '_blank', 'width=320,height=600,menubar=no,toolbar=no');
+    if (!printWindow) return;
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+        <head>
+          <meta charset="UTF-8" />
+          <title>Recibo de Mesa</title>
+          <style>
+            @page { size: 64mm auto; margin: 0; }
+            html, body {
+              margin: 0;
+              width: 64mm;
+              background: #fff;
+              color: #000;
+              font-family: 'Arial', 'Helvetica', sans-serif;
+              font-size: 13px;
+              font-weight: 600;
+              line-height: 1.4;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .thermal-wrapper { padding: 0 2mm 4mm; box-sizing: border-box; }
+            .thermal-divider { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+            .thermal-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+            .thermal-items .item { display: flex; justify-content: space-between; margin-bottom: 2px; }
+            .item-name { flex: 1; padding: 0 4px; }
+          </style>
+        </head>
+        <body>
+          ${content}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.onload = function () {
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    };
+  }
+
+  if (mesaPrintBtn) {
+    mesaPrintBtn.addEventListener('click', openMesaPrintWindow);
+  }
+
+  const mesaAutoPrint = {{ auto_print|default:False|yesno:"true,false" }};
+  if (mesaAutoPrint) {
+    setTimeout(openMesaPrintWindow, 200);
+  }
+</script>

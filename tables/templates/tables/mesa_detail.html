@@ -1,0 +1,965 @@
+{% extends 'core/base.html' %}
+
+{% block pageContent %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12 col-12">
+  <div class="card shadow-sm border-0">
+    <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+      <div class="text-center text-lg-start">
+        <h2 class="h4 mb-1 fw-bold">Mesa {{ table.number }}</h2>
+        <p class="text-muted mb-0">{{ table.name|default:"Sem identificação" }} • {{ table.capacity }} lugares</p>
+      </div>
+      <div class="d-flex flex-wrap justify-content-center justify-content-lg-end gap-2">
+        <a href="{% url 'mesas' %}" class="btn btn-outline-secondary">
+          <i class="material-icons align-middle me-1">arrow_back</i>Voltar
+        </a>
+        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#tableModal" data-mode="edit"
+                data-id="{{ table.id }}"
+                data-number="{{ table.number }}"
+                data-name="{{ table.name }}"
+                data-capacity="{{ table.capacity }}"
+                data-notes="{{ table.notes|escapejs }}"
+                data-active="{% if table.is_active %}1{% else %}0{% endif %}">
+          <i class="material-icons align-middle me-1">edit</i>Editar mesa
+        </button>
+        <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteTableModal"
+                data-id="{{ table.id }}" data-label="Mesa {{ table.number }}">
+          <i class="material-icons align-middle me-1">delete</i>Excluir mesa
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if open_order %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12 mdc-layout-grid__cell--span-8-desktop col-12 col-lg-8">
+  <div class="card shadow-sm border-0 h-100">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+      <div>
+        <h3 class="h5 mb-0 fw-bold">Comanda #{{ open_order.id }}</h3>
+        <small class="text-muted d-block">Aberta em {{ open_order.opened_at|date:"d/m/Y H:i" }}</small>
+        <small class="text-muted">Garçom: {{ open_order.waiter_name|default:"-" }}</small>
+      </div>
+      <span class="badge bg-danger">Aberta</span>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive mb-4">
+        <table class="table table-striped align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Produto</th>
+              <th class="text-center">Qtd.</th>
+              <th class="text-end">Preço</th>
+              <th class="text-end">Total</th>
+              <th class="text-center">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in open_order.items.all %}
+              <tr>
+                <td>
+                  <strong>{{ item.product.name }}</strong><br>
+                  <small class="text-muted">{{ item.notes|default:"Sem observações" }}</small>
+                </td>
+                <td class="text-center">{{ item.quantity|floatformat:2 }}</td>
+                <td class="text-end">R$ {{ item.unit_price|floatformat:2 }}</td>
+                <td class="text-end">R$ {{ item.total|floatformat:2 }}</td>
+                <td class="text-center">
+                  <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#itemModal"
+                            data-item-id="{{ item.id }}"
+                            data-product-id="{{ item.product.id }}"
+                            data-quantity="{{ item.quantity }}"
+                            data-notes="{{ item.notes|escapejs }}">
+                      <i class="material-icons">edit</i>
+                    </button>
+                    <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteItemModal"
+                            data-item-id="{{ item.id }}"
+                            data-product-name="{{ item.product.name }}">
+                      <i class="material-icons">delete</i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5" class="text-center text-muted py-4">Nenhum item adicionado até o momento.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card border-dashed">
+        <div class="card-body">
+          <h5 class="fw-bold mb-3">Adicionar item</h5>
+          <form method="post" action="{% url 'adicionar_item_comanda' open_order.id %}" class="row g-3 align-items-end">
+            {% csrf_token %}
+            <div class="col-md-6">
+              <label class="form-label" for="id_product">Produto</label>
+              <input type="search" class="form-control form-control-sm mb-2" id="product-search" placeholder="Digite para filtrar produtos">
+              {{ item_form.product }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="id_quantity">Quantidade</label>
+              {{ item_form.quantity }}
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="id_notes">Observações</label>
+              {{ item_form.notes }}
+            </div>
+            <div class="col-12 text-end">
+              <button type="submit" class="btn btn-primary">
+                <i class="material-icons align-middle me-1">add</i>Adicionar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12 mdc-layout-grid__cell--span-4-desktop col-12 col-lg-4">
+  <div class="card shadow-sm border-0 mb-3">
+    <div class="card-header bg-white py-3">
+      <h3 class="h6 mb-0 fw-bold">Resumo da comanda</h3>
+    </div>
+    <div class="card-body">
+      <dl class="row mb-0">
+        <dt class="col-6 text-muted">Subtotal</dt>
+        <dd class="col-6 text-end">R$ {{ open_order.subtotal|floatformat:2 }}</dd>
+        <dt class="col-6 text-muted">Taxa de serviço</dt>
+        <dd class="col-6 text-end">
+          {% if open_order.service_charge %}
+            {{ open_order.service_charge|floatformat:2 }}% (R$ {{ open_order.service_amount|floatformat:2 }})
+          {% else %}
+            —
+          {% endif %}
+        </dd>
+        <dt class="col-6 text-muted">Desconto</dt>
+        <dd class="col-6 text-end">R$ {{ open_order.discount_amount|floatformat:2 }}</dd>
+        {% if open_order.discount_amount or open_order.discount_reason %}
+        <dt class="col-12 text-muted">Motivo do desconto</dt>
+        <dd class="col-12 text-end text-wrap">{{ open_order.discount_reason|default:"—" }}</dd>
+        {% endif %}
+        <dt class="col-6 text-muted">Total</dt>
+        <dd class="col-6 text-end fw-bold">R$ {{ open_order.total|floatformat:2 }}</dd>
+        <dt class="col-6 text-muted">Pessoas</dt>
+        <dd class="col-6 text-end">{{ open_order.people_count }}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0 mb-3">
+    <div class="card-header bg-white py-3">
+      <h3 class="h6 mb-0 fw-bold">Dados da comanda</h3>
+    </div>
+    <div class="card-body">
+      <form method="post" action="{% url 'atualizar_comanda' open_order.id %}" class="vstack gap-3">
+        {% csrf_token %}
+        <div>
+          <label class="form-label">Garçom responsável</label>
+          {{ order_form.waiter }}
+        </div>
+        <div>
+          <label class="form-label">Quantidade de pessoas</label>
+          {{ order_form.people_count }}
+        </div>
+        <div>
+          <label class="form-label">Taxa de serviço (%)</label>
+          {{ order_form.service_charge }}
+          {% if order_form.service_charge.help_text %}
+            <div class="form-text small">{{ order_form.service_charge.help_text }}</div>
+          {% endif %}
+        </div>
+        <div>
+          <label class="form-label">Desconto</label>
+          {{ order_form.discount_amount }}
+        </div>
+        <div>
+          <label class="form-label">Motivo do desconto</label>
+          {{ order_form.discount_reason }}
+          <div class="form-text small">Obrigatório quando houver desconto.</div>
+        </div>
+        <div>
+          <label class="form-label">Observações</label>
+          {{ order_form.notes }}
+        </div>
+        <div class="text-end">
+          <button type="submit" class="btn btn-outline-primary">Atualizar dados</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
+      <div class="d-grid gap-2">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#closeOrderModal">
+          <i class="material-icons align-middle me-1">check_circle</i>Fechar comanda
+        </button>
+        <form method="post" action="{% url 'excluir_comanda' open_order.id %}" class="d-grid">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-danger">Excluir comanda</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12 mdc-layout-grid__cell--span-6-desktop col-12 col-lg-6">
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3">
+      <h3 class="h5 mb-0 fw-bold">Abrir nova comanda</h3>
+    </div>
+    <div class="card-body">
+      <form method="post" action="{% url 'abrir_comanda' table.id %}">
+        {% csrf_token %}
+        {% if not has_waiters %}
+          <div class="alert alert-warning" role="alert">
+            Cadastre um garçom ativo antes de abrir uma nova comanda. <a href="{% url 'garcons' %}" class="alert-link">Acessar cadastro de garçons</a>.
+          </div>
+        {% endif %}
+        {% if not can_open_new_order %}
+          <div class="alert alert-warning" role="alert">
+            Abra o caixa na <a href="{% url 'cashier' %}" class="alert-link">gestão de caixa</a> para iniciar uma nova comanda.
+          </div>
+        {% endif %}
+        <fieldset class="row g-3" {% if not can_open_new_order %}disabled{% endif %}>
+          <div class="col-md-6">
+            <label class="form-label">Garçom responsável</label>
+            {{ order_form.waiter }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Quantidade de pessoas</label>
+            {{ order_form.people_count }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Taxa de serviço (%)</label>
+            {{ order_form.service_charge }}
+            {% if order_form.service_charge.help_text %}
+              <div class="form-text small">{{ order_form.service_charge.help_text }}</div>
+            {% endif %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Desconto</label>
+            {{ order_form.discount_amount }}
+          </div>
+          <div class="col-12">
+            <label class="form-label">Observações</label>
+            {{ order_form.notes }}
+          </div>
+          <div class="col-12 text-end">
+            <button type="submit" class="btn btn-primary"{% if not can_open_new_order %} disabled{% endif %}>
+              <i class="material-icons align-middle me-1">play_circle</i>Abrir comanda
+            </button>
+          </div>
+        </fieldset>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12 mdc-layout-grid__cell--span-6-desktop col-12 col-lg-6">
+  <div class="card shadow-sm border-0 h-100">
+    <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <h3 class="h6 mb-0 fw-bold">Histórico de comandas da mesa</h3>
+      <span class="badge bg-light text-dark">{{ closed_orders|length }} registro{{ closed_orders|length|pluralize:"s" }}</span>
+    </div>
+    <div class="card-body">
+      {% if closed_orders %}
+        <div class="accordion accordion-flush" id="closedOrdersAccordion">
+          {% for order in closed_orders %}
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="heading{{ order.id }}">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ order.id }}" aria-expanded="false" aria-controls="collapse{{ order.id }}">
+                  <div class="w-100 d-flex justify-content-between align-items-center gap-3">
+                    <div>
+                      <span class="fw-semibold">Comanda #{{ order.id }}</span>
+                      <small class="text-muted d-block">Mesa {{ order.table.number }} • Garçom: {{ order.waiter_name|default:"-" }}</small>
+                      <small class="text-muted">{{ order.get_status_display }} em {{ order.closed_at|default:order.opened_at|date:"d/m/Y H:i" }}</small>
+                    </div>
+                    <span class="badge bg-light text-dark fs-6">R$ {{ order.total|floatformat:2 }}</span>
+                  </div>
+                </button>
+              </h2>
+              <div id="collapse{{ order.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ order.id }}" data-bs-parent="#closedOrdersAccordion">
+                <div class="accordion-body">
+                  <div class="row g-3 mb-3">
+                    <div class="col-sm-6 col-lg-4">
+                      <div class="small text-muted">Subtotal</div>
+                      <div class="fw-semibold">R$ {{ order.subtotal|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-sm-6 col-lg-4">
+                      <div class="small text-muted">Taxa de serviço</div>
+                      <div class="fw-semibold">
+                        {% if order.service_charge %}
+                          {{ order.service_charge|floatformat:2 }}% (R$ {{ order.service_amount|floatformat:2 }})
+                        {% else %}
+                          —
+                        {% endif %}
+                      </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-4">
+                      <div class="small text-muted">Desconto</div>
+                      <div class="fw-semibold">R$ {{ order.discount_amount|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-sm-6 col-lg-4">
+                      <div class="small text-muted">Forma de pagamento</div>
+                      <div class="fw-semibold">{{ order.payment_method|default:"Não informado" }}</div>
+                    </div>
+                    <div class="col-sm-6 col-lg-4">
+                      <div class="small text-muted">Aberta em</div>
+                      <div class="fw-semibold">{{ order.opened_at|date:"d/m/Y H:i" }}</div>
+                    </div>
+                    <div class="col-sm-6 col-lg-4">
+                      <div class="small text-muted">Fechada em</div>
+                      <div class="fw-semibold">
+                        {% if order.closed_at %}
+                          {{ order.closed_at|date:"d/m/Y H:i" }}
+                        {% else %}
+                          —
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm table-striped align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>Item</th>
+                          <th class="text-center">Qtd.</th>
+                          <th class="text-end">Preço</th>
+                          <th class="text-end">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for item in order.items.all %}
+                          <tr>
+                            <td>
+                              <span class="fw-semibold">{{ item.product.name }}</span>
+                              {% if item.notes %}<small class="text-muted d-block">{{ item.notes }}</small>{% endif %}
+                            </td>
+                            <td class="text-center">{{ item.quantity|floatformat:2 }}</td>
+                            <td class="text-end">R$ {{ item.unit_price|floatformat:2 }}</td>
+                            <td class="text-end">R$ {{ item.total|floatformat:2 }}</td>
+                          </tr>
+                        {% empty %}
+                          <tr>
+                            <td colspan="4" class="text-center text-muted">Sem itens registrados.</td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                  {% if order.notes %}
+                    <p class="small text-muted mb-3">Observações: {{ order.notes }}</p>
+                  {% endif %}
+                  <div class="d-flex flex-wrap gap-2">
+                    {% if order.latest_sale %}
+                      <a
+                        class="btn btn-outline-secondary btn-sm"
+                        href="{% url 'receipt-modal' %}?id={{ order.latest_sale.id }}"
+                        target="_blank"
+                        rel="noopener"
+                      >
+                        Imprimir recibo
+                      </a>
+                    {% endif %}
+                    <form method="post" action="{% url 'reabrir_comanda' order.id %}">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-outline-primary btn-sm">Reabrir comanda</button>
+                    </form>
+                    <form method="post" action="{% url 'excluir_comanda' order.id %}">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-outline-danger btn-sm">Excluir registro</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-muted mb-0">Nenhuma comanda finalizada para esta mesa.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Modais reutilizados -->
+<div class="modal fade" id="tableModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="tableForm">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'mesa-detalhe' table.id %}">
+        <div class="modal-header">
+          <h5 class="modal-title">Editar mesa</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="id_table_number" class="form-label">Número da mesa</label>
+            <input type="number" class="form-control" id="id_table_number" name="number" min="1" required>
+          </div>
+          <div class="mb-3">
+            <label for="id_table_name" class="form-label">Identificação</label>
+            <input type="text" class="form-control" id="id_table_name" name="name">
+          </div>
+          <div class="mb-3">
+            <label for="id_table_capacity" class="form-label">Quantidade de lugares</label>
+            <input type="number" class="form-control" id="id_table_capacity" name="capacity" min="1" value="1" required>
+          </div>
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="id_table_active" name="is_active" checked>
+            <label class="form-check-label" for="id_table_active">Mesa ativa</label>
+          </div>
+          <div>
+            <label for="id_table_notes" class="form-label">Observações</label>
+            <textarea class="form-control" id="id_table_notes" name="notes" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="deleteTableModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="deleteTableForm">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'mesa-detalhe' table.id %}">
+        <div class="modal-header">
+          <h5 class="modal-title">Excluir mesa</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p id="deleteTableMessage" class="mb-0">Deseja realmente excluir esta mesa?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger">Excluir</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="itemModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="itemForm">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Editar item</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label" for="modal_product">Produto</label>
+            <input type="search" class="form-control form-control-sm mb-2" id="modal-product-search" placeholder="Filtrar produtos">
+            <select class="form-select" name="product" id="modal_product">
+              {% for product in item_form.fields.product.queryset %}
+                <option value="{{ product.id }}">{{ product.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="modal_quantity">Quantidade</label>
+            <input type="number" class="form-control" name="quantity" id="modal_quantity" min="0.01" step="0.01" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="modal_notes">Observações</label>
+            <textarea class="form-control" name="notes" id="modal_notes" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="deleteItemModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="deleteItemForm">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Remover item</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p id="deleteItemMessage" class="mb-0"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger">Remover</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% if open_order %}
+<div class="modal fade" id="closeOrderModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{% url 'fechar_comanda' open_order.id %}" id="closeOrderForm" data-subtotal="{{ open_order.subtotal|floatformat:2 }}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Fechar comanda</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Taxa de serviço (%)</label>
+            {{ close_form.service_charge }}
+            {% if close_form.service_charge.help_text %}
+              <div class="form-text small">{{ close_form.service_charge.help_text }}</div>
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Desconto</label>
+            {{ close_form.discount_amount }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Motivo do desconto</label>
+            {{ close_form.discount_reason }}
+            <div class="form-text">Obrigatório quando houver desconto.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Pagamentos</label>
+            <div id="orderPaymentList" class="d-flex flex-column gap-2"></div>
+            <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="orderAddPayment">
+              <i class="material-icons align-middle">add</i> Adicionar pagamento
+            </button>
+            <div class="form-text">Registre cada forma de pagamento utilizada para quitar a comanda.</div>
+          </div>
+          <div class="mb-3">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label">Saldo a receber</label>
+                <input type="text" class="form-control" id="orderPaymentRemaining" readonly value="R$ 0,00">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Troco</label>
+                <input type="text" class="form-control" id="orderPaymentChange" readonly value="R$ 0,00">
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Observações</label>
+            {{ close_form.notes }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">Confirmar fechamento</button>
+        </div>
+        <div id="orderPaymentRowTemplate" class="d-none">
+          <div class="payment-row d-flex align-items-end gap-2">
+            <div class="flex-grow-1">
+              <label class="form-label mb-1">Forma</label>
+              <select class="form-select payment-method">
+                <option value="PIX">Pix</option>
+                <option value="DINHEIRO">Dinheiro</option>
+                <option value="DEBITO">Débito</option>
+                <option value="CREDITO">Crédito</option>
+              </select>
+            </div>
+            <div class="flex-grow-1">
+              <label class="form-label mb-1">Valor</label>
+              <input type="number" class="form-control payment-amount" min="0.01" step="0.01" placeholder="0,00">
+            </div>
+            <div class="d-flex align-items-end">
+              <button type="button" class="btn btn-outline-danger btn-sm remove-payment" title="Remover">
+                <i class="material-icons align-middle">close</i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block ScriptBlock %}
+{{ block.super }}
+<script>
+  const tableModal = document.getElementById('tableModal');
+  if (tableModal) {
+    tableModal.addEventListener('show.bs.modal', event => {
+      const button = event.relatedTarget;
+      const form = tableModal.querySelector('form');
+      form.reset();
+      form.action = `{% url 'atualizar_mesa' table.id %}`;
+      tableModal.querySelector('#id_table_active').checked = true;
+
+      if (button && button.getAttribute('data-mode') === 'edit') {
+        const number = button.getAttribute('data-number');
+        const name = button.getAttribute('data-name') || '';
+        const capacity = button.getAttribute('data-capacity') || '1';
+        const notes = button.getAttribute('data-notes') || '';
+        const active = button.getAttribute('data-active') === '1';
+
+        form.querySelector('#id_table_number').value = number;
+        form.querySelector('#id_table_name').value = name;
+        form.querySelector('#id_table_capacity').value = capacity;
+        form.querySelector('#id_table_notes').value = notes;
+        tableModal.querySelector('#id_table_active').checked = active;
+      }
+    });
+  }
+
+  const deleteTableModal = document.getElementById('deleteTableModal');
+  if (deleteTableModal) {
+    deleteTableModal.addEventListener('show.bs.modal', event => {
+      const button = event.relatedTarget;
+      const form = deleteTableModal.querySelector('form');
+      const message = deleteTableModal.querySelector('#deleteTableMessage');
+      const label = button.getAttribute('data-label');
+
+      form.action = `{% url 'excluir_mesa' table.id %}`;
+      message.textContent = `Deseja realmente excluir ${label}?`;
+    });
+  }
+
+  const itemModal = document.getElementById('itemModal');
+  if (itemModal) {
+    itemModal.addEventListener('show.bs.modal', event => {
+      const button = event.relatedTarget;
+      const form = itemModal.querySelector('form');
+      form.action = '';
+      form.reset();
+
+      const searchInput = itemModal.querySelector('#modal-product-search');
+      if (searchInput) {
+        searchInput.value = '';
+        searchInput.dispatchEvent(new Event('input'));
+      }
+
+      if (button) {
+        const itemId = button.getAttribute('data-item-id');
+        const productId = button.getAttribute('data-product-id');
+        const quantity = button.getAttribute('data-quantity');
+        const notes = button.getAttribute('data-notes') || '';
+
+        form.action = `{% url 'atualizar_item_comanda' 0 %}`.replace('/0/', `/${itemId}/`);
+        const productSelect = form.querySelector('select[name="product"]');
+        if (productSelect) {
+          productSelect.value = productId;
+        }
+        const quantityInput = form.querySelector('input[name="quantity"]');
+        if (quantityInput) {
+          quantityInput.value = quantity;
+        }
+        const notesInput = form.querySelector('textarea[name="notes"]');
+        if (notesInput) {
+          notesInput.value = notes;
+        }
+      }
+    });
+  }
+
+  const deleteItemModal = document.getElementById('deleteItemModal');
+  if (deleteItemModal) {
+    deleteItemModal.addEventListener('show.bs.modal', event => {
+      const button = event.relatedTarget;
+      const form = deleteItemModal.querySelector('form');
+      const message = deleteItemModal.querySelector('#deleteItemMessage');
+
+      if (button) {
+        const itemId = button.getAttribute('data-item-id');
+        const productName = button.getAttribute('data-product-name');
+        form.action = `{% url 'remover_item_comanda' 0 %}`.replace('/0/', `/${itemId}/`);
+        message.textContent = `Remover "${productName}" da comanda?`;
+      }
+    });
+  }
+
+  function setupSelectSearch(searchId, selectId) {
+    const searchInput = document.getElementById(searchId);
+    const selectEl = document.getElementById(selectId);
+    if (!searchInput || !selectEl) {
+      return;
+    }
+
+    const originalOptions = Array.from(selectEl.options).map(option => ({
+      value: option.value,
+      text: option.text,
+      disabled: option.disabled,
+    }));
+
+    searchInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+      }
+    });
+
+    searchInput.addEventListener('input', () => {
+      const term = searchInput.value.trim().toLowerCase();
+      const previousValue = selectEl.value;
+      const filtered = originalOptions.filter(option => option.text.toLowerCase().includes(term));
+
+      selectEl.innerHTML = '';
+
+      if (!filtered.length) {
+        const emptyOption = document.createElement('option');
+        emptyOption.textContent = 'Nenhum produto encontrado';
+        emptyOption.disabled = true;
+        emptyOption.selected = true;
+        selectEl.appendChild(emptyOption);
+        return;
+      }
+
+      filtered.forEach(optionData => {
+        const option = document.createElement('option');
+        option.value = optionData.value;
+        option.textContent = optionData.text;
+        option.disabled = optionData.disabled;
+        selectEl.appendChild(option);
+      });
+
+      if (filtered.some(option => option.value === previousValue)) {
+        selectEl.value = previousValue;
+      }
+    });
+
+    searchInput.dispatchEvent(new Event('input'));
+  }
+
+  setupSelectSearch('product-search', 'id_product');
+  setupSelectSearch('modal-product-search', 'modal_product');
+
+  const closeOrderModalEl = document.getElementById('closeOrderModal');
+  if (closeOrderModalEl) {
+    const closeOrderForm = document.getElementById('closeOrderForm');
+    const paymentTemplate = document.querySelector('#orderPaymentRowTemplate .payment-row');
+    const paymentList = document.getElementById('orderPaymentList');
+    const remainingDisplay = document.getElementById('orderPaymentRemaining');
+    const changeDisplay = document.getElementById('orderPaymentChange');
+    const serviceField = closeOrderForm.querySelector('input[name="service_charge"]');
+    const discountField = closeOrderForm.querySelector('input[name="discount_amount"]');
+    const discountReasonField = closeOrderForm.querySelector('[name="discount_reason"]');
+    const subtotal = parseFloat(closeOrderForm.getAttribute('data-subtotal') || '0');
+
+    const normalize = value => {
+      if (value === undefined || value === null) {
+        return 0;
+      }
+      const raw = String(value).trim();
+      if (!raw) {
+        return 0;
+      }
+      const usesComma = raw.includes(',');
+      const sanitized = usesComma ? raw.replace(/\./g, '').replace(',', '.') : raw.replace(/\s/g, '');
+      const parsed = parseFloat(sanitized);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    };
+
+    const formatCurrency = value => {
+      const number = Number(value) || 0;
+      return number.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const computeDue = () => {
+      const serviceRate = normalize(serviceField.value);
+      const rawDiscount = normalize(discountField.value);
+      const serviceAmount = serviceRate > 0 ? subtotal * (serviceRate / 100) : 0;
+      const maxDiscount = subtotal + serviceAmount;
+      const discount = Math.min(rawDiscount, maxDiscount);
+      if (discountField && discount !== rawDiscount) {
+        discountField.value = discount.toFixed(2);
+      }
+      const due = subtotal + serviceAmount - discount;
+      return due > 0 ? due : 0;
+    };
+
+    const recalcOrderPayments = () => {
+      if (!paymentList) {
+        return;
+      }
+      const due = computeDue();
+      let tendered = 0;
+      paymentList.querySelectorAll('.payment-row').forEach(row => {
+        const amountField = row.querySelector('.payment-amount');
+        tendered += normalize(amountField.value);
+      });
+      const remaining = due - tendered;
+      const change = tendered - due;
+      if (remainingDisplay) {
+        const remainingValue = remaining > 0 ? remaining : 0;
+        remainingDisplay.value = `R$ ${formatCurrency(remainingValue)}`;
+        remainingDisplay.dataset.raw = remainingValue;
+      }
+      if (changeDisplay) {
+        const changeValue = change > 0 ? change : 0;
+        changeDisplay.value = `R$ ${formatCurrency(changeValue)}`;
+        changeDisplay.dataset.raw = changeValue;
+      }
+    };
+
+    const addPaymentRow = (method = 'DINHEIRO', amount = null) => {
+      if (!paymentTemplate || !paymentList) {
+        return;
+      }
+      const row = paymentTemplate.cloneNode(true);
+      const methodField = row.querySelector('.payment-method');
+      const amountField = row.querySelector('.payment-amount');
+      const removeButton = row.querySelector('.remove-payment');
+
+      if (methodField) {
+        methodField.value = method;
+        methodField.addEventListener('change', recalcOrderPayments);
+      }
+      if (amountField) {
+        const baseAmount = amount !== null ? amount : computeDue();
+        amountField.value = (Number(baseAmount) || 0).toFixed(2);
+        amountField.addEventListener('input', recalcOrderPayments);
+      }
+      if (removeButton) {
+        removeButton.addEventListener('click', () => {
+          if (paymentList.querySelectorAll('.payment-row').length === 1) {
+            if (amountField) {
+              amountField.value = '0.00';
+              recalcOrderPayments();
+            }
+            return;
+          }
+          row.remove();
+          recalcOrderPayments();
+        });
+      }
+
+      paymentList.appendChild(row);
+    };
+
+    const resetOrderPayments = () => {
+      if (!paymentList) {
+        return;
+      }
+      paymentList.innerHTML = '';
+      addPaymentRow('DINHEIRO', computeDue());
+      recalcOrderPayments();
+    };
+
+    closeOrderModalEl.addEventListener('shown.bs.modal', resetOrderPayments);
+
+    const addPaymentButton = document.getElementById('orderAddPayment');
+    if (addPaymentButton) {
+      addPaymentButton.addEventListener('click', () => {
+        const remainingRaw = remainingDisplay ? parseFloat(remainingDisplay.dataset.raw || '0') : 0;
+        const targetAmount = remainingRaw > 0 ? remainingRaw : computeDue();
+        addPaymentRow('DINHEIRO', targetAmount);
+        recalcOrderPayments();
+      });
+    }
+
+    if (serviceField) {
+      serviceField.addEventListener('input', recalcOrderPayments);
+    }
+    if (discountField) {
+      discountField.addEventListener('input', recalcOrderPayments);
+    }
+
+    closeOrderForm.addEventListener('submit', event => {
+      const remainingRaw = remainingDisplay ? parseFloat(remainingDisplay.dataset.raw || '0') : 0;
+      const remaining = Number.isNaN(remainingRaw) ? 0 : remainingRaw;
+      if (remaining > 0.009) {
+        event.preventDefault();
+        alert('Ainda existe valor pendente para receber.');
+        return false;
+      }
+      if (discountField) {
+        const discountValue = normalize(discountField.value);
+        if (discountValue > 0) {
+          const reason = discountReasonField ? discountReasonField.value.trim() : '';
+          if (!reason) {
+            event.preventDefault();
+            alert('Informe o motivo do desconto antes de finalizar.');
+            return false;
+          }
+        }
+      }
+      closeOrderForm.querySelectorAll('input[name="payment_method[]"], input[name="payment_amount[]"]').forEach(el => el.remove());
+      paymentList.querySelectorAll('.payment-row').forEach(row => {
+        const methodField = row.querySelector('.payment-method');
+        const amountField = row.querySelector('.payment-amount');
+        const method = methodField ? methodField.value : '';
+        const amount = amountField ? normalize(amountField.value) : 0;
+        if (!method || amount <= 0) {
+          return;
+        }
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = 'payment_method[]';
+        methodInput.value = method;
+        closeOrderForm.appendChild(methodInput);
+
+        const amountInput = document.createElement('input');
+        amountInput.type = 'hidden';
+        amountInput.name = 'payment_amount[]';
+        amountInput.value = amount.toFixed(2);
+        closeOrderForm.appendChild(amountInput);
+      });
+      return true;
+    });
+  }
+
+  const closedOrdersAccordion = document.getElementById('closedOrdersAccordion');
+  if (closedOrdersAccordion && window.bootstrap) {
+    closedOrdersAccordion.addEventListener('click', event => {
+      const trigger = event.target.closest('[data-bs-toggle="collapse"]');
+      if (!trigger) {
+        return;
+      }
+
+      const targetSelector = trigger.getAttribute('data-bs-target');
+      if (!targetSelector) {
+        return;
+      }
+
+      const target = document.querySelector(targetSelector);
+      if (!target || !target.classList.contains('show')) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const instance = bootstrap.Collapse.getInstance(target) || new bootstrap.Collapse(target, {
+        toggle: false,
+      });
+      instance.hide();
+    });
+  }
+</script>
+<style>
+  .border-dashed {
+    border: 2px dashed rgba(13, 110, 253, .2);
+    border-radius: 1rem;
+  }
+
+  .border-dashed:focus-within {
+    border-color: rgba(13, 110, 253, .6);
+    box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .2);
+  }
+
+  @media (max-width: 576px) {
+    .table-responsive table {
+      font-size: .85rem;
+    }
+  }
+</style>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "core/base.html" %}
+{% load humanize %}
+{% block pageContent %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+  <div class="mdc-card p-4">
+    <h4 class="card-title">Caixa encerrado com sucesso</h4>
+    <p class="text-muted">O caixa aberto em {{ session.opened_at|date:"d/m/Y H:i" }} foi encerrado. Utilize os botões abaixo para visualizar ou baixar o relatório gerado automaticamente.</p>
+    <div class="d-flex flex-wrap gap-2 mb-4">
+      <a class="btn btn-primary" href="data:application/pdf;base64,{{ pdf_base64 }}" download="{{ file_name }}">
+        <i class="mdi mdi-download"></i> Baixar relatório
+      </a>
+      <a class="btn btn-outline-secondary" href="{% url 'cashier' %}">
+        <i class="mdi mdi-arrow-left"></i> Voltar ao caixa
+      </a>
+    </div>
+    <div class="row g-3 mb-3">
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <small class="text-muted text-uppercase">Saldo inicial</small>
+            <h5 class="fw-bold mt-1">R$ {{ session.opening_amount|floatformat:2|intcomma }}</h5>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <small class="text-muted text-uppercase">Saldo contado</small>
+            <h5 class="fw-bold mt-1">R$ {{ session.closing_amount|floatformat:2|intcomma }}</h5>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <small class="text-muted text-uppercase">Início</small>
+            <h6 class="fw-bold mt-1">{{ session.opened_at|date:"d/m/Y H:i" }}</h6>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <small class="text-muted text-uppercase">Fechamento</small>
+            <h6 class="fw-bold mt-1">{{ session.closed_at|date:"d/m/Y H:i" }}</h6>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ratio ratio-4x3">
+      <iframe src="data:application/pdf;base64,{{ pdf_base64 }}" title="Relatório de fechamento" style="border: 1px solid #e9ecef; border-radius: .5rem;"></iframe>
+    </div>
+  </div>
+</div>
+{% endblock %}

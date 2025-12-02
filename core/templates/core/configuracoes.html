@@ -1,0 +1,211 @@
+{% extends 'core/base.html' %}
+
+{% block pageContent %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+  <div class="ds-hero mb-3">
+    <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-3 justify-content-between">
+      <div>
+        <p class="mb-1 text-uppercase small fw-semibold ds-text-secondary">Configuracoes</p>
+        <h2 class="h4 mb-1 ds-text-primary">Preferencias do sistema</h2>
+        <p class="text-muted mb-0">Ajuste impressoras e como o sistema abre a tela de impressao apos finalizar uma venda ou pedido.</p>
+      </div>
+      <div class="ds-kpi text-center">
+        <div class="small text-muted">Tenant ativo</div>
+        <div class="fw-bold">{{ request.user.profile.company.name|default:'N/D' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .config-tabs {
+      gap: .5rem;
+    }
+
+    .config-tabs .nav-link {
+      border: 1px solid #d9e2ec;
+      color: #0b1727;
+      font-weight: 600;
+      padding: 0.55rem 1rem;
+      border-radius: 12px;
+      background-color: transparent;
+      transition: all .15s ease-in-out;
+      white-space: nowrap;
+    }
+
+    .config-tabs .nav-link.active {
+      background: linear-gradient(135deg, #002d6c, #001a40);
+      color: #ffffff;
+      border-color: #001a40;
+      box-shadow: 0 8px 20px rgb(0 45 108 / 18%);
+    }
+  </style>
+
+  <form method="post" novalidate class="ds-page">
+    {% csrf_token %}
+    <div class="row g-4 align-items-start">
+      <div class="col-12 col-xl-8">
+        <div class="ds-card p-3 p-md-4 h-100">
+          <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <span class="badge bg-light text-dark border">Ajustes rapidos</span>
+              <span class="text-muted small">Centralize as opcoes em uma navegacao compacta.</span>
+            </div>
+            <ul class="nav nav-pills config-tabs flex-row flex-nowrap flex-md-wrap overflow-auto" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="impressao-tab" data-bs-toggle="tab" data-bs-target="#impressao" type="button" role="tab" aria-controls="impressao" aria-selected="true">
+                  Impressao
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="preferencias-tab" data-bs-toggle="tab" data-bs-target="#preferencias" type="button" role="tab" aria-controls="preferencias" aria-selected="false">
+                  Preferencias
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <div class="tab-content pt-1">
+            <div class="tab-pane fade show active" id="impressao" role="tabpanel" aria-labelledby="impressao-tab">
+              <div class="row gy-4">
+                <div class="col-12">
+                  <div class="p-3 p-md-0">
+                    <div class="d-flex flex-column gap-2 mb-2">
+                      <div class="d-flex align-items-center gap-2">
+                        <label class="form-label ds-form-label mb-0" for="{{ form.default_printer.id_for_label }}">
+                          {{ form.default_printer.label }}
+                        </label>
+                        <span class="badge bg-light text-dark border">Impressao</span>
+                      </div>
+                      <p class="text-muted small mb-0">Escolha a impressora padrao e visualize rapidamente as instaladas no host.</p>
+                    </div>
+                    <div class="d-flex flex-column flex-lg-row gap-3 align-items-stretch align-items-lg-center">
+                      <div class="flex-grow-1">
+                        {{ form.default_printer }}
+                        {% if printers %}
+                        <datalist id="printers">
+                          {% for printer in printers %}
+                          <option value="{{ printer }}"></option>
+                          {% endfor %}
+                        </datalist>
+                        {% endif %}
+                        {% if form.default_printer.help_text %}
+                        <div class="form-text">{{ form.default_printer.help_text }}</div>
+                        {% endif %}
+                        {% if form.default_printer.errors %}
+                        <div class="text-danger small mt-1">{{ form.default_printer.errors|striptags }}</div>
+                        {% endif %}
+                      </div>
+                      <button type="button" class="ds-btn ds-btn-secondary flex-shrink-0" data-bs-toggle="modal" data-bs-target="#printerModal">
+                        {{ printers|length|default:0 }} impressoras encontradas
+                      </button>
+                    </div>
+                    {% if not printers %}
+                    <div class="alert alert-warning mt-3 mb-0">
+                      Nenhuma impressora foi encontrada neste servidor/host. Voce ainda pode digitar manualmente o nome ou caminho.
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="preferencias" role="tabpanel" aria-labelledby="preferencias-tab">
+              <div class="row gy-4">
+                <div class="col-12">
+                  <div class="p-3 p-md-0">
+                    <div class="mb-2">
+                      <p class="text-muted small mb-1">Defina o fluxo apos salvar um pedido ou venda para evitar cliques extras.</p>
+                    </div>
+                    <div class="form-check form-switch ps-0 d-flex align-items-center gap-3">
+                      {{ form.auto_open_print }}
+                      <label class="form-check-label fw-semibold" for="{{ form.auto_open_print.id_for_label }}">
+                        {{ form.auto_open_print.label }}
+                      </label>
+                    </div>
+                    {% if form.auto_open_print.help_text %}
+                    <div class="form-text mt-2">{{ form.auto_open_print.help_text }}</div>
+                    {% endif %}
+                    {% if form.auto_open_print.errors %}
+                    <div class="text-danger small mt-1">{{ form.auto_open_print.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <button type="submit" class="ds-btn ds-btn-primary">Salvar configuracoes</button>
+          <a href="{% url 'home-page' %}" class="ds-btn ds-btn-secondary">Voltar para o dashboard</a>
+        </div>
+      </div>
+
+      <div class="col-12 col-xl-4">
+        <div class="ds-card p-3 p-md-4 h-100">
+          <h6 class="ds-text-primary mb-3">Resumo rapido</h6>
+          <ul class="list-unstyled small text-muted mb-4">
+            <li class="mb-2"><strong>Tenant:</strong> {{ request.user.profile.company.name|default:'N/D' }}</li>
+            <li class="mb-2"><strong>Impressoras listadas:</strong> {{ printers|length|default:0 }}</li>
+            <li class="mb-0">Use a mesma impressora que aparece ao imprimir recibos em Vendas.</li>
+          </ul>
+          <div class="border-top pt-3">
+            <p class="small text-muted mb-1">Dica rapida</p>
+            <p class="small mb-0">Se a impressora nao aparecer, confirme que o servico roda no mesmo host ou preencha o nome/caminho manualmente.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="modal fade" id="printerModal" tabindex="-1" aria-labelledby="printerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content ds-card p-0">
+      <div class="modal-header">
+        <h5 class="modal-title ds-text-primary" id="printerModalLabel">Selecione a impressora</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        {% if printers %}
+        <div class="list-group">
+          {% for printer in printers %}
+          <button type="button" class="list-group-item list-group-item-action printer-option text-start" data-printer="{{ printer }}">
+            {{ printer }}
+          </button>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-info mb-0">
+          Nao encontramos impressoras disponiveis neste host. Confirme se o servico esta rodando na mesma maquina da impressora ou preencha o campo manualmente.
+        </div>
+        {% endif %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="ds-btn ds-btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block ScriptBlock %}
+{{ block.super }}
+<script>
+  (function () {
+    const printerInput = document.getElementById('{{ form.default_printer.id_for_label }}');
+
+    document.querySelectorAll('.printer-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const name = btn.getAttribute('data-printer');
+        printerInput.value = name;
+        const modalEl = document.getElementById('printerModal');
+        if (modalEl && typeof bootstrap !== 'undefined') {
+          const modal = bootstrap.Modal.getInstance(modalEl);
+          modal && modal.hide();
+        }
+      });
+    });
+  })();
+</script>
+{% endblock ScriptBlock %}
+{% endblock pageContent %}

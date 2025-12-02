@@ -3,12 +3,13 @@ import re
 import unicodedata
 import xml.etree.ElementTree as ET
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from io import BytesIO
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db.models import F, Sum
-from django.http import HttpResponse, JsonResponse
+from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 
@@ -549,14 +550,15 @@ def download_estoque_template(request):
         'Inativo',
     ])
 
-    response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    buffer = BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+    return FileResponse(
+        buffer,
+        as_attachment=True,
+        filename='modelo_importacao_estoque.xlsx',
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     )
-    response['Content-Disposition'] = (
-        'attachment; filename=modelo_importacao_estoque.xlsx'
-    )
-    workbook.save(response)
-    return response
 
 
 class EstoqueXMLUploadView(View):

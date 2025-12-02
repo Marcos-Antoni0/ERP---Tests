@@ -1,13 +1,14 @@
 import json
 import re
 import unicodedata
+from io import BytesIO
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db.models import Avg, ProtectedError, Q, Sum
-from django.http import HttpResponse, JsonResponse
+from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 
 from core.utils import get_user_company
@@ -359,14 +360,15 @@ def download_category_template(request):
     worksheet.append(
         ['Serviços', 'Serviços temporariamente indisponíveis', 'Inativo'])
 
-    response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    buffer = BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+    return FileResponse(
+        buffer,
+        as_attachment=True,
+        filename='modelo_importacao_categorias.xlsx',
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     )
-    response['Content-Disposition'] = (
-        'attachment; filename=modelo_importacao_categorias.xlsx'
-    )
-    workbook.save(response)
-    return response
 
 
 @login_required
@@ -633,14 +635,15 @@ def download_product_template(request):
         'Inativo',
     ])
 
-    response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    buffer = BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+    return FileResponse(
+        buffer,
+        as_attachment=True,
+        filename='modelo_importacao_produtos.xlsx',
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     )
-    response['Content-Disposition'] = (
-        'attachment; filename=modelo_importacao_produtos.xlsx'
-    )
-    workbook.save(response)
-    return response
 
 
 @login_required

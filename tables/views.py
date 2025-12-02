@@ -418,12 +418,16 @@ def fechar_comanda(request, order_id):
             table.waiter = None
             table.save(update_fields=['waiter'])
 
-        auto_print_flag = '1' if getattr(user_company, 'auto_open_print', True) else '0'
+        auto_open_print = getattr(user_company, 'auto_open_print', True)
+        auto_print_flag = '1' if auto_open_print else '0'
         receipt_url = reverse('receipt-modal') + f'?id={sale.id}&auto_print={auto_print_flag}'
-        try:
-            print_status, print_message = trigger_auto_print(sale)
-        except Exception as exc:  # noqa: BLE001
-            print_status, print_message = False, f'Erro ao acionar impressao: {exc}'
+        print_status = False
+        print_message = 'Impressao automatica desativada para esta empresa.'
+        if auto_open_print:
+            try:
+                print_status, print_message = trigger_auto_print(sale)
+            except Exception as exc:  # noqa: BLE001
+                print_status, print_message = False, f'Erro ao acionar impressao: {exc}'
         if print_status:
             messages.success(request, f'Recibo enviado para impressora padrao. {print_message}')
         else:

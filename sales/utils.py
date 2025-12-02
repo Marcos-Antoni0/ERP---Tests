@@ -9,6 +9,7 @@ from typing import Iterable, Sequence
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Sum
+from django.utils import timezone
 
 from p_v_App.models import (
     CashMovement,
@@ -65,6 +66,7 @@ def print_sale_receipt_to_printer(sale: Sales, *, printer_name: str | None = Non
         header_label='Venda',
         code=sale.code,
         company_name=getattr(sale.company, 'name', 'Empresa'),
+        company_cnpj=getattr(sale.company, 'cnpj', ''),
         created_at=sale.date_added,
         items=items,
         delivery_fee=sale.delivery_fee or 0,
@@ -107,6 +109,7 @@ def print_pedido_receipt_to_printer(pedido: Pedido, *, printer_name: str | None 
         header_label='Pedido',
         code=pedido.code,
         company_name=getattr(pedido.company, 'name', 'Empresa'),
+        company_cnpj=getattr(pedido.company, 'cnpj', ''),
         created_at=pedido.date_added,
         items=items,
         delivery_fee=getattr(pedido, 'taxa_entrega', 0) or 0,
@@ -123,6 +126,7 @@ def _build_receipt_payload(
     header_label: str,
     code: str,
     company_name: str,
+    company_cnpj: str | None,
     created_at,
     items: list[dict],
     delivery_fee,
@@ -132,9 +136,16 @@ def _build_receipt_payload(
 ) -> str:
     lines: list[str] = []
     lines.append(company_name or 'Empresa')
+    cnpj = (company_cnpj or '').strip()
+    if cnpj:
+        lines.append(f'CNPJ: {cnpj}')
     lines.append(f'{header_label}: {code}')
     if created_at:
-        lines.append(f'Data: {created_at:%d/%m/%Y %H:%M}')
+        try:
+            display_dt = timezone.localtime(created_at)
+        except Exception:
+            display_dt = created_at
+        lines.append(f'Data: {display_dt:%d/%m/%Y %H:%M}')
     lines.append('-' * 32)
 
     total_itens = Decimal('0')
@@ -178,6 +189,7 @@ def _build_receipt_payload(
 
     lines.append('-' * 32)
     lines.append('Obrigado pela preferencia!')
+    lines.append('')  # linha final simples para corte
     return '\n'.join(lines)
 
 

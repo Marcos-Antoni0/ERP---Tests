@@ -5,7 +5,7 @@ from typing import Iterable, Optional, Sequence
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import connection, transaction
-from django.db.models import Q, Sum
+from django.db.models import Q, Sum, Max
 from django.db.models.functions import TruncDate
 from django.db.utils import OperationalError, ProgrammingError
 from django.shortcuts import redirect
@@ -60,14 +60,32 @@ def generate_sale_code(company: Company, extra_querysets=None) -> str:
     if extra_querysets is None:
         extra_querysets = []
     prefix = timezone.now().year * 2
-    idx = 1
+    prefix_str = str(prefix)
+
+    def _max_sequence(qs) -> int:
+        """Extract the highest numeric suffix for codes that start with the prefix."""
+        max_code = (
+            qs.filter(code__startswith=prefix_str)
+            .aggregate(max_code=Max('code'))
+            .get('max_code')
+        )
+        if not max_code:
+            return 0
+        suffix = str(max_code)[len(prefix_str):]
+        return int(suffix) if suffix.isdigit() else 0
+
+    max_idx = _max_sequence(Sales.objects.filter(company=company))
+    for qs in extra_querysets:
+        max_idx = max(max_idx, _max_sequence(qs))
+
+    next_idx = max_idx + 1
     while True:
-        code = f'{prefix}{idx:05d}'
+        code = f'{prefix}{next_idx:05d}'
         if not Sales.objects.filter(company=company, code=code).exists() and all(
             not qs.filter(code=code).exists() for qs in extra_querysets
         ):
             return code
-        idx += 1
+        next_idx += 1
 
 
 def _to_decimal(value, default: str = '0') -> Decimal:

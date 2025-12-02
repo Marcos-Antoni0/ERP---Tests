@@ -476,16 +476,22 @@ def save_pos(request):
                         recorded_by=request.user,
                     )
 
-                try:
-                    print_status, print_message = trigger_auto_print(pedido)
-                except Exception as print_exc:  # noqa: BLE001
-                    print_status, print_message = False, f'Falha ao acionar impressao: {print_exc}'
+                print_status = False
+                print_message = 'Impressao automatica desativada para esta empresa.'
+                if auto_open_print:
+                    try:
+                        print_status, print_message = trigger_auto_print(pedido)
+                    except Exception as print_exc:  # noqa: BLE001
+                        print_status, print_message = False, f'Falha ao acionar impressao: {print_exc}'
 
                 resp = {
                     'status': 'success',
                     'sale_id': pedido.id,
                     'type': 'pedido',
-                    'receipt_url': reverse('receipt-modal') + f'?id={pedido.id}&auto_print={auto_print_flag}',
+                    'receipt_url': (
+                        reverse('receipt-modal') + f'?id={pedido.id}&auto_print={auto_print_flag}'
+                        if auto_open_print else ''
+                    ),
                     'print_status': 'success' if print_status else 'skipped',
                     'print_message': print_message,
                 }
@@ -644,16 +650,22 @@ def save_pos(request):
                 )
                 debt_created = True
                 debt_amount = remaining_due
-            try:
-                print_status, print_message = trigger_auto_print(venda)
-            except Exception as print_exc:  # noqa: BLE001
-                print_status, print_message = False, f'Falha ao acionar impressao: {print_exc}'
+            print_status = False
+            print_message = 'Impressao automatica desativada para esta empresa.'
+            if auto_open_print:
+                try:
+                    print_status, print_message = trigger_auto_print(venda)
+                except Exception as print_exc:  # noqa: BLE001
+                    print_status, print_message = False, f'Falha ao acionar impressao: {print_exc}'
 
             resp = {
                 'status': 'success',
                 'sale_id': venda.id,
                 'type': 'venda',
-                'receipt_url': reverse('receipt-modal') + f'?id={venda.id}&auto_print={auto_print_flag}',
+                'receipt_url': (
+                    reverse('receipt-modal') + f'?id={venda.id}&auto_print={auto_print_flag}'
+                    if auto_open_print else ''
+                ),
                 'print_status': 'success' if print_status else 'skipped',
                 'print_message': print_message,
                 'register_debt': register_debt,
